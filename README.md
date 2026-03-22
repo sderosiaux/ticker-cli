@@ -7,7 +7,21 @@
 
 Get financial prices from your terminal. Stocks, crypto, forex, commodities, indices -- all from Yahoo Finance, in one command.
 
-Built for two audiences: humans who want quick price checks, and LLM agents that need structured data they can parse without guessing.
+Works for humans and LLM agents. Ask your AI assistant something like:
+
+> "How did my watchlist do this week? AAPL, GC=F, BTC-USD, EURUSD=X"
+
+The agent runs `ticker-cli --weekly-change --format json AAPL GC=F BTC-USD EURUSD=X`, parses the JSON, and gives you a summary:
+
+> AAPL dropped 1.9% to $248. Gold held up at +0.4%. Bitcoin took the biggest hit at -5.2%. EUR/USD flat.
+
+Or ask it to verify a price from a report:
+
+> "Was AAPL really at $248 on March 20th?"
+
+It runs `ticker-cli --date 2026-03-20 --format json AAPL` and confirms.
+
+---
 
 ```
 $ ticker-cli AAPL BTC-USD GC=F EURUSD=X ^GSPC
@@ -152,6 +166,16 @@ No config files, no auth tokens, no state. Every call is self-contained.
 | Bonds | `^TNX` (US 10Y yield) |
 
 Find any symbol at [finance.yahoo.com](https://finance.yahoo.com).
+
+## Claude Code skill
+
+If you use [Claude Code](https://docs.anthropic.com/en/docs/claude-code), install the ticker skill so Claude automatically uses `ticker-cli` when you ask about prices:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/sderosiaux/ticker-cli/main/install-skill.sh | bash
+```
+
+This drops a skill file into `~/.claude/skills/`. After that, Claude will call `ticker-cli` whenever you mention stocks, crypto, gold, forex, etc. in conversation. No need to tell it how -- it figures out the right flags.
 
 ## How it works
 
