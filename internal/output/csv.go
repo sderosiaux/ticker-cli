@@ -11,7 +11,7 @@ func writeCSV(w io.Writer, data interface{}) error {
 	defer cw.Flush()
 
 	if quotes, ok := toQuotes(data); ok {
-		cw.Write([]string{"symbol", "name", "price", "change", "change_pct", "currency", "market_state"})
+		_ = cw.Write([]string{"symbol", "name", "price", "change", "change_pct", "currency", "market_state"})
 		for _, q := range quotes {
 			cw.Write([]string{
 				q.Symbol,
@@ -27,7 +27,7 @@ func writeCSV(w io.Writer, data interface{}) error {
 	}
 
 	if history, ok := toHistory(data); ok {
-		cw.Write([]string{"symbol", "date", "open", "high", "low", "close", "volume"})
+		_ = cw.Write([]string{"symbol", "date", "open", "high", "low", "close", "volume"})
 		for _, h := range history {
 			for _, p := range h.Points {
 				cw.Write([]string{
@@ -45,7 +45,7 @@ func writeCSV(w io.Writer, data interface{}) error {
 	}
 
 	if changes, ok := toChanges(data); ok {
-		cw.Write([]string{"symbol", "name", "price", "period_start", "period_end", "change", "change_pct", "period"})
+		_ = cw.Write([]string{"symbol", "name", "price", "period_start", "period_end", "change", "change_pct", "period"})
 		for _, c := range changes {
 			cw.Write([]string{
 				c.Symbol,

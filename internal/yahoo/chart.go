@@ -80,22 +80,25 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 		req.AddCookie(cookie)
 	}
 
-	resp, err := c.session.client.Do(req)
+	body, err := c.doChartRequest(req)
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("chart API returned %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+		// Retry once with session refresh
+		if refreshErr := c.session.Refresh(); refreshErr != nil {
+			return nil, fmt.Errorf("session refresh: %w", refreshErr)
+		}
+		req2, _ := http.NewRequest(http.MethodGet, endpoint, nil)
+		req2.Header.Set("User-Agent", userAgent)
+		for _, cookie := range c.session.Cookies() {
+			req2.AddCookie(cookie)
+		}
+		body, err = c.doChartRequest(req2)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var cr chartResponse
+
 	if err := json.Unmarshal(body, &cr); err != nil {
 		return nil, fmt.Errorf("decode chart response: %w", err)
 	}
@@ -141,4 +144,18 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 		Currency: r.Meta.Currency,
 		Points:   points,
 	}, nil
+}
+
+func (c *Client) doChartRequest(req *http.Request) ([]byte, error) {
+	resp, err := c.session.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("chart API returned %d", resp.StatusCode)
+	}
+
+	return io.ReadAll(resp.Body)
 }
