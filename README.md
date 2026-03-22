@@ -1,5 +1,10 @@
 # ticker-cli
 
+[![CI](https://github.com/sderosiaux/ticker-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/sderosiaux/ticker-cli/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sderosiaux/ticker-cli)](https://goreportcard.com/report/github.com/sderosiaux/ticker-cli)
+[![Release](https://img.shields.io/github/v/release/sderosiaux/ticker-cli)](https://github.com/sderosiaux/ticker-cli/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Get financial prices from your terminal. Stocks, crypto, forex, commodities, indices -- all from Yahoo Finance, in one command.
 
 Built for two audiences: humans who want quick price checks, and LLM agents that need structured data they can parse without guessing.
