@@ -172,10 +172,10 @@ Find any symbol at [finance.yahoo.com](https://finance.yahoo.com).
 If you use [Claude Code](https://docs.anthropic.com/en/docs/claude-code), install the ticker skill so Claude automatically uses `ticker-cli` when you ask about prices:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sderosiaux/ticker-cli/main/install-skill.sh | bash
+npx skills add sderosiaux/ticker-cli
 ```
 
-This drops a skill file into `~/.claude/skills/`. After that, Claude will call `ticker-cli` whenever you mention stocks, crypto, gold, forex, etc. in conversation. No need to tell it how -- it figures out the right flags.
+After that, Claude calls `ticker-cli` whenever you mention stocks, crypto, gold, forex, etc. No need to tell it how -- it picks the right flags from context.
 
 ## How it works
 
