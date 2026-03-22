@@ -1,0 +1,47 @@
+version: "2"
+
+linters:
+  presets:
+    - bugs
+    - comment
+    - complexity
+    - error
+    - format
+    - import
+    - metalinter
+    - module
+    - performance
+    - sql
+    - style
+    - test
+    - unused
+  disable:
+    # too noisy for a CLI tool
+    - exhaustruct      # requires all struct fields to be set
+    - varnamelen       # short var names are fine in Go
+    - wsl              # whitespace style is subjective
+    - godot            # comment dots
+    - lll              # line length — gofmt handles this
+    # gofumpt is a formatter, disabled via formatters section
+    - depguard         # no dependency policy needed
+    - tagliatelle      # json tag style is already consistent
+    - forbidigo        # we need fmt.Fprintf to stderr
+    # gci is a formatter, disabled via formatters section
+    - ireturn          # returning interfaces is fine
+    - nonamedreturns   # named returns are ok for docs
+    - mnd              # magic numbers in CLI/formatting are fine
+    - copyloopvar      # Go 1.22+ handles this
+    - godox            # TODO comments are ok during development
+
+formatters:
+  enable:
+    - gofmt
+
+run:
+  tests: true
+  go: "1.22"
+
+issues:
+  fix: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -68,7 +68,7 @@ func tableQuotes(w io.Writer, quotes []model.Quote, useColor bool) error {
 		pct = colorize(q.ChangePercent, pct, useColor)
 
 		name := truncate(q.Name, maxNameLen)
-		fmt.Fprintf(w, "%-10s %-*s %12s  %8s  %8s  %s\n",
+		_, _ = fmt.Fprintf(w, "%-10s %-*s %12s  %8s  %8s  %s\n",
 			q.Symbol,
 			maxNameLen, name,
 			formatPrice(q.Price, q.Currency),
@@ -82,15 +82,15 @@ func tableQuotes(w io.Writer, quotes []model.Quote, useColor bool) error {
 
 func tableHistory(w io.Writer, results []model.HistoryResult) error {
 	for _, r := range results {
-		fmt.Fprintf(w, "%s (%s)\n", r.Symbol, r.Name)
-		fmt.Fprintf(w, "%-12s %10s %10s %10s %10s %12s\n",
+		_, _ = fmt.Fprintf(w, "%s (%s)\n", r.Symbol, r.Name)
+		_, _ = fmt.Fprintf(w, "%-12s %10s %10s %10s %10s %12s\n",
 			"Date", "Open", "High", "Low", "Close", "Volume")
-		fmt.Fprintln(w, strings.Repeat("-", 68))
+		_, _ = fmt.Fprintln(w, strings.Repeat("-", 68))
 		for _, p := range r.Points {
-			fmt.Fprintf(w, "%-12s %10.2f %10.2f %10.2f %10.2f %12d\n",
+			_, _ = fmt.Fprintf(w, "%-12s %10.2f %10.2f %10.2f %10.2f %12d\n",
 				p.Date, p.Open, p.High, p.Low, p.Close, p.Volume)
 		}
-		fmt.Fprintln(w)
+		_, _ = fmt.Fprintln(w)
 	}
 	return nil
 }
@@ -103,7 +103,7 @@ func tableChanges(w io.Writer, changes []model.ChangeResult, useColor bool) erro
 		pct = colorize(c.ChangePercent, pct, useColor)
 
 		name := truncate(c.Name, maxNameLen)
-		fmt.Fprintf(w, "%-10s %-*s %12s  %8s  %8s  %s\n",
+		_, _ = fmt.Fprintf(w, "%-10s %-*s %12s  %8s  %8s  %s\n",
 			c.Symbol,
 			maxNameLen, name,
 			formatPrice(c.Price, c.Currency),

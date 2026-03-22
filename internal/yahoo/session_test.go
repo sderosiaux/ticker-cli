@@ -17,7 +17,7 @@ func TestNewSession_GetsCookieAndCrumb(t *testing.T) {
 
 	// Mock crumb server: returns crumb string
 	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("test-crumb-xyz"))
+		_, _ = w.Write([]byte("test-crumb-xyz"))
 	}))
 	defer crumb.Close()
 
@@ -54,9 +54,9 @@ func TestNewSession_Refresh(t *testing.T) {
 	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := callCount.Add(1)
 		if n == 1 {
-			w.Write([]byte("crumb-v1"))
+			_, _ = w.Write([]byte("crumb-v1"))
 		} else {
-			w.Write([]byte("crumb-v2"))
+			_, _ = w.Write([]byte("crumb-v2"))
 		}
 	}))
 	defer crumb.Close()
@@ -88,7 +88,7 @@ func TestNewSession_EUConsentFlow(t *testing.T) {
 			return
 		}
 		// GET returns a page with sessionId and gcrumb in the URL-like content
-		w.Write([]byte(`<form><input name="sessionId" value="sess123"><input name="gcrumb" value="gc456"></form>`))
+		_, _ = w.Write([]byte(`<form><input name="sessionId" value="sess123"><input name="gcrumb" value="gc456"></form>`))
 	}))
 	defer consent.Close()
 
@@ -100,7 +100,7 @@ func TestNewSession_EUConsentFlow(t *testing.T) {
 	defer root.Close()
 
 	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("eu-crumb"))
+		_, _ = w.Write([]byte("eu-crumb"))
 	}))
 	defer crumb.Close()
 
@@ -138,7 +138,7 @@ func TestNewSession_CrumbSentWithCookies(t *testing.T) {
 				gotCookie = true
 			}
 		}
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	}))
 	defer crumb.Close()
 

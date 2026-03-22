@@ -18,7 +18,7 @@ func newChartTestServer(chartHandler http.HandlerFunc) *httptest.Server {
 		http.NotFound(w, r)
 	})
 	mux.HandleFunc("/v1/test/getcrumb", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("test-crumb"))
+		_, _ = w.Write([]byte("test-crumb"))
 	})
 	mux.HandleFunc("/v8/finance/chart/", chartHandler)
 	return httptest.NewServer(mux)
@@ -68,7 +68,7 @@ func TestGetChart_Range(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(chartJSON(
+		_, _ = w.Write(chartJSON(
 			"AAPL", "Apple Inc.", "USD",
 			[]int64{1711065600, 1711152000, 1711238400, 1711324800, 1711411200},
 			[]float64{176.5, 177.0, 177.5, 178.0, 178.5},
@@ -130,7 +130,7 @@ func TestGetChart_DateRange(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(chartJSON(
+		_, _ = w.Write(chartJSON(
 			"AAPL", "Apple Inc.", "USD",
 			[]int64{1774224000},
 			[]float64{180.0},

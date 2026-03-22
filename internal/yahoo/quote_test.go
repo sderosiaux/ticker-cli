@@ -21,7 +21,7 @@ func newTestServer(quoteHandler http.HandlerFunc) *httptest.Server {
 		http.NotFound(w, r)
 	})
 	mux.HandleFunc("/v1/test/getcrumb", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("test-crumb"))
+		_, _ = w.Write([]byte("test-crumb"))
 	})
 	mux.HandleFunc("/v7/finance/quote", quoteHandler)
 	return httptest.NewServer(mux)
@@ -45,7 +45,7 @@ func ff(val float64, fmt string) map[string]interface{} {
 func TestGetQuotes(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(quoteJSON(map[string]interface{}{
+		_, _ = w.Write(quoteJSON(map[string]interface{}{
 			"symbol":                     "AAPL",
 			"shortName":                  "Apple Inc.",
 			"regularMarketPrice":         ff(178.52, "178.52"),
@@ -112,7 +112,7 @@ func TestGetQuotes(t *testing.T) {
 func TestGetQuotes_MultipleSymbols(t *testing.T) {
 	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(quoteJSON(
+		_, _ = w.Write(quoteJSON(
 			map[string]interface{}{
 				"symbol":                     "AAPL",
 				"shortName":                  "Apple Inc.",

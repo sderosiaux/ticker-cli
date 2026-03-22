@@ -61,7 +61,7 @@ func compactQuotes(w io.Writer, quotes []model.Quote) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(w, "%s\n", b)
+		_, _ = fmt.Fprintf(w, "%s\n", b)
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func compactChanges(w io.Writer, changes []model.ChangeResult) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(w, "%s\n", b)
+		_, _ = fmt.Fprintf(w, "%s\n", b)
 	}
 	return nil
 }
@@ -105,7 +105,7 @@ func compactHistory(w io.Writer, results []model.HistoryResult) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(w, "%s\n", b)
+		_, _ = fmt.Fprintf(w, "%s\n", b)
 	}
 	return nil
 }

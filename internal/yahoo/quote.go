@@ -178,7 +178,7 @@ func (c *Client) fetchQuotes(symbols []string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("quote API returned %d", resp.StatusCode)

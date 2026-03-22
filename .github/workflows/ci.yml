@@ -14,7 +14,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-      - run: go fmt ./... && git diff --exit-code
-      - run: go vet ./...
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
       - run: go test ./... -count=1 -race
       - run: go build -o ticker-cli .

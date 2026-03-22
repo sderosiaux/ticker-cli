@@ -72,7 +72,7 @@ func (s *Session) getCookie() error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check for EU consent redirect
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
@@ -129,11 +129,11 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 
 		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
 			currentURL = resp.Header.Get("Location")
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			continue
 		}
 
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		break
 	}
 
@@ -170,7 +170,7 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	allCookies = append(allCookies, parseSetCookieHeaders(resp.Header)...)
 	s.cookies = allCookies
@@ -197,7 +197,7 @@ func (s *Session) getCrumb() error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

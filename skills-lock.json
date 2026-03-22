@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "ticker": {
+      "source": "sderosiaux/ticker-cli",
+      "sourceType": "github",
+      "computedHash": "733e01b853de63601d90c50033458ced125250fbc410b7059b6d5fb0b6b09b04"
+    }
+  }
+}

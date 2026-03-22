@@ -13,7 +13,7 @@ func writeCSV(w io.Writer, data interface{}) error {
 	if quotes, ok := toQuotes(data); ok {
 		_ = cw.Write([]string{"symbol", "name", "price", "change", "change_pct", "currency", "market_state"})
 		for _, q := range quotes {
-			cw.Write([]string{
+			_ = cw.Write([]string{
 				q.Symbol,
 				q.Name,
 				fmt.Sprintf("%.2f", q.Price),
@@ -30,7 +30,7 @@ func writeCSV(w io.Writer, data interface{}) error {
 		_ = cw.Write([]string{"symbol", "date", "open", "high", "low", "close", "volume"})
 		for _, h := range history {
 			for _, p := range h.Points {
-				cw.Write([]string{
+				_ = cw.Write([]string{
 					h.Symbol,
 					p.Date,
 					fmt.Sprintf("%.2f", p.Open),
@@ -47,7 +47,7 @@ func writeCSV(w io.Writer, data interface{}) error {
 	if changes, ok := toChanges(data); ok {
 		_ = cw.Write([]string{"symbol", "name", "price", "period_start", "period_end", "change", "change_pct", "period"})
 		for _, c := range changes {
-			cw.Write([]string{
+			_ = cw.Write([]string{
 				c.Symbol,
 				c.Name,
 				fmt.Sprintf("%.2f", c.Price),
