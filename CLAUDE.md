@@ -1,30 +1,30 @@
-# ticker-check
+# ticker-cli
 
 Yahoo Finance price checker. One binary, zero config, structured output.
 
 ## Install
 
 ```bash
-go install github.com/sderosiaux/ticker-check@latest
+go install github.com/sderosiaux/ticker-cli@latest
 ```
 
 ## Commands
 
 ```bash
 # Current prices
-ticker-check AAPL SLB BTC-USD GC=F CL=F EURUSD=X
+ticker-cli AAPL SLB BTC-USD GC=F CL=F EURUSD=X
 
 # Historical date
-ticker-check --date 2026-03-20 AAPL SLB GC=F
+ticker-cli --date 2026-03-20 AAPL SLB GC=F
 
 # Range history (1d, 5d, 1mo, 3mo, 6mo, 1y, ytd)
-ticker-check --range 5d AAPL GC=F
+ticker-cli --range 5d AAPL GC=F
 
 # Weekly change
-ticker-check --weekly-change AAPL SLB
+ticker-cli --weekly-change AAPL SLB
 
 # Year-to-date change
-ticker-check --ytd AAPL GC=F BTC-USD
+ticker-cli --ytd AAPL GC=F BTC-USD
 ```
 
 ## Global Flags
@@ -43,16 +43,16 @@ ticker-check --ytd AAPL GC=F BTC-USD
 
 ```bash
 # Parse single price
-ticker-check --compact AAPL | jq .price
+ticker-cli --compact AAPL | jq .price
 
 # Get all as structured JSON
-ticker-check --format json AAPL BTC-USD GC=F EURUSD=X
+ticker-cli --format json AAPL BTC-USD GC=F EURUSD=X
 
 # Weekly report data
-ticker-check --weekly-change --format csv AAPL SLB NEM GC=F BZ=F CL=F BTC-USD EURUSD=X
+ticker-cli --weekly-change --format csv AAPL SLB NEM GC=F BZ=F CL=F BTC-USD EURUSD=X
 
 # Verify historical price
-ticker-check --date 2026-03-20 --format json AAPL
+ticker-cli --date 2026-03-20 --format json AAPL
 ```
 
 ## Yahoo Finance Symbols
@@ -79,6 +79,6 @@ ticker-check --date 2026-03-20 --format json AAPL
 ## Development
 
 ```bash
-go build -o ticker-check .
+go build -o ticker-cli .
 go test ./... -count=1
 ```

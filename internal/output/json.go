@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sderosiaux/ticker-check/internal/model"
+	"github.com/sderosiaux/ticker-cli/internal/model"
 )
 
 func writeJSON(w io.Writer, data interface{}, compact bool) error {
@@ -92,7 +92,7 @@ func compactChanges(w io.Writer, changes []model.ChangeResult) error {
 }
 
 type compactHistoryItem struct {
-	Symbol string              `json:"symbol"`
+	Symbol string               `json:"symbol"`
 	Points []model.HistoryPoint `json:"points"`
 }
 

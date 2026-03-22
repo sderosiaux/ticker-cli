@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sderosiaux/ticker-check/internal/model"
+	"github.com/sderosiaux/ticker-cli/internal/model"
 )
 
 type chartResponse struct {

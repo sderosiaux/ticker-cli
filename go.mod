@@ -1,4 +1,4 @@
-module github.com/sderosiaux/ticker-check
+module github.com/sderosiaux/ticker-cli
 
 go 1.26.1
 

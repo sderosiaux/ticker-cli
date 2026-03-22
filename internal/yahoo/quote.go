@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sderosiaux/ticker-check/internal/model"
+	"github.com/sderosiaux/ticker-cli/internal/model"
 )
 
 // round2 rounds a float64 to 2 decimal places.

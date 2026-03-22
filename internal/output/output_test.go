@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sderosiaux/ticker-check/internal/model"
+	"github.com/sderosiaux/ticker-cli/internal/model"
 )
 
 var testQuotes = []model.Quote{

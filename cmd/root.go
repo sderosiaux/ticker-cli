@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sderosiaux/ticker-check/internal/debug"
-	"github.com/sderosiaux/ticker-check/internal/model"
-	"github.com/sderosiaux/ticker-check/internal/output"
-	"github.com/sderosiaux/ticker-check/internal/yahoo"
+	"github.com/sderosiaux/ticker-cli/internal/debug"
+	"github.com/sderosiaux/ticker-cli/internal/model"
+	"github.com/sderosiaux/ticker-cli/internal/output"
+	"github.com/sderosiaux/ticker-cli/internal/yahoo"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -42,15 +42,15 @@ var validRanges = map[string]bool{
 }
 
 var rootCmd = &cobra.Command{
-	Use:     "ticker-check [symbols...]",
+	Use:     "ticker-cli [symbols...]",
 	Short:   "Yahoo Finance price checker for LLM agents",
 	Long:    "Fetch current or historical prices from Yahoo Finance. Structured output for piping and LLM tool calls.",
 	Version: version,
-	Example: `  ticker-check AAPL SLB BTC-USD GC=F
-  ticker-check --date 2026-03-20 AAPL SLB
-  ticker-check --range 5d AAPL GC=F
-  ticker-check --weekly-change AAPL --format json
-  ticker-check --ytd AAPL --compact`,
+	Example: `  ticker-cli AAPL SLB BTC-USD GC=F
+  ticker-cli --date 2026-03-20 AAPL SLB
+  ticker-cli --range 5d AAPL GC=F
+  ticker-cli --weekly-change AAPL --format json
+  ticker-cli --ytd AAPL --compact`,
 	Args:          cobra.MinimumNArgs(1),
 	RunE:          run,
 	SilenceUsage:  true,
@@ -171,7 +171,7 @@ func run(cmd *cobra.Command, args []string) error {
 	if err := client.Init(); err != nil {
 		sp.Stop()
 		errorf("Session failed: %v", err)
-		fmt.Fprintf(os.Stderr, "  Try: ticker-check --debug %s\n", strings.Join(symbols, " "))
+		fmt.Fprintf(os.Stderr, "  Try: ticker-cli --debug %s\n", strings.Join(symbols, " "))
 		return &ExitError{Code: 2, Msg: "session init failed"}
 	}
 	done()
@@ -267,7 +267,7 @@ func run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			sp.Stop()
 			errorf("Failed to fetch quotes: %v", err)
-			fmt.Fprintf(os.Stderr, "  Try: ticker-check --debug %s\n", strings.Join(symbols, " "))
+			fmt.Fprintf(os.Stderr, "  Try: ticker-cli --debug %s\n", strings.Join(symbols, " "))
 			return &ExitError{Code: 2, Msg: "quote fetch failed"}
 		}
 		data = quotes

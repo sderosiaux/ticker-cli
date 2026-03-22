@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/sderosiaux/ticker-check/internal/model"
+	"github.com/sderosiaux/ticker-cli/internal/model"
 	"golang.org/x/term"
 )
 

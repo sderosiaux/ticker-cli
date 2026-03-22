@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/sderosiaux/ticker-check/internal/model"
+	"github.com/sderosiaux/ticker-cli/internal/model"
 )
 
 const (

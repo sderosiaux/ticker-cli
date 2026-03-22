@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sderosiaux/ticker-check/cmd"
+	"github.com/sderosiaux/ticker-cli/cmd"
 )
 
 func main() {
