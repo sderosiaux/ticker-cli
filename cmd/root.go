@@ -3,7 +3,13 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sync/atomic"
+	"time"
 
+	"github.com/sderosiaux/ticker-check/internal/debug"
+	"github.com/sderosiaux/ticker-check/internal/model"
+	"github.com/sderosiaux/ticker-check/internal/output"
+	"github.com/sderosiaux/ticker-check/internal/yahoo"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +50,182 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
+// spinner displays a braille animation on stderr.
+type spinner struct {
+	running atomic.Bool
+	done    chan struct{}
+}
+
+func startSpinner(msg string) *spinner {
+	s := &spinner{done: make(chan struct{})}
+	s.running.Store(true)
+	go func() {
+		chars := []rune{'⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'}
+		i := 0
+		for s.running.Load() {
+			fmt.Fprintf(os.Stderr, "\r%c %s\033[K", chars[i%10], msg)
+			time.Sleep(80 * time.Millisecond)
+			i++
+		}
+		fmt.Fprintf(os.Stderr, "\r\033[K")
+		close(s.done)
+	}()
+	return s
+}
+
+func (s *spinner) Stop() {
+	s.running.Store(false)
+	<-s.done
+}
+
+func computeChange(hist *model.HistoryResult, period string) *model.ChangeResult {
+	if len(hist.Points) < 2 {
+		return nil
+	}
+	first := hist.Points[0]
+	last := hist.Points[len(hist.Points)-1]
+	change := last.Close - first.Close
+	changePct := (change / first.Close) * 100
+	return &model.ChangeResult{
+		Symbol:        hist.Symbol,
+		Name:          hist.Name,
+		Price:         last.Close,
+		Currency:      hist.Currency,
+		PeriodStart:   first.Close,
+		PeriodEnd:     last.Close,
+		Change:        change,
+		ChangePercent: changePct,
+		Period:        period,
+	}
+}
+
 func run(cmd *cobra.Command, args []string) error {
-	fmt.Fprintln(os.Stderr, "not implemented yet")
+	debug.Enabled = flagDebug
+	symbols := args
+
+	sp := startSpinner("Fetching prices...")
+
+	client := yahoo.NewClient(
+		"https://query1.finance.yahoo.com",
+		"https://query2.finance.yahoo.com",
+		"https://consent.yahoo.com",
+	)
+
+	debug.Log("initializing session")
+	done := debug.Timer("session.Init")
+	if err := client.Init(); err != nil {
+		sp.Stop()
+		return fmt.Errorf("session init: %w", err)
+	}
+	done()
+
+	var (
+		data     interface{}
+		errCount int
+	)
+
+	switch {
+	case flagDate != "":
+		debug.Log("mode: date=%s", flagDate)
+		results := make([]model.HistoryResult, 0, len(symbols))
+		for _, sym := range symbols {
+			d := debug.Timer("GetChart " + sym)
+			hist, err := client.GetChart(sym, "", flagDate, flagDate)
+			d()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %s: %v\n", sym, err)
+				errCount++
+				continue
+			}
+			results = append(results, *hist)
+		}
+		data = results
+
+	case flagRange != "":
+		debug.Log("mode: range=%s", flagRange)
+		results := make([]model.HistoryResult, 0, len(symbols))
+		for _, sym := range symbols {
+			d := debug.Timer("GetChart " + sym)
+			hist, err := client.GetChart(sym, flagRange, "", "")
+			d()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %s: %v\n", sym, err)
+				errCount++
+				continue
+			}
+			results = append(results, *hist)
+		}
+		data = results
+
+	case flagWeeklyChange:
+		debug.Log("mode: weekly-change")
+		results := make([]model.ChangeResult, 0, len(symbols))
+		for _, sym := range symbols {
+			d := debug.Timer("GetChart " + sym)
+			hist, err := client.GetChart(sym, "5d", "", "")
+			d()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %s: %v\n", sym, err)
+				errCount++
+				continue
+			}
+			cr := computeChange(hist, "5d")
+			if cr == nil {
+				fmt.Fprintf(os.Stderr, "error: %s: insufficient data for change\n", sym)
+				errCount++
+				continue
+			}
+			results = append(results, *cr)
+		}
+		data = results
+
+	case flagYTD:
+		debug.Log("mode: ytd")
+		results := make([]model.ChangeResult, 0, len(symbols))
+		for _, sym := range symbols {
+			d := debug.Timer("GetChart " + sym)
+			hist, err := client.GetChart(sym, "ytd", "", "")
+			d()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %s: %v\n", sym, err)
+				errCount++
+				continue
+			}
+			cr := computeChange(hist, "ytd")
+			if cr == nil {
+				fmt.Fprintf(os.Stderr, "error: %s: insufficient data for change\n", sym)
+				errCount++
+				continue
+			}
+			results = append(results, *cr)
+		}
+		data = results
+
+	default:
+		debug.Log("mode: quotes")
+		d := debug.Timer("GetQuotes")
+		quotes, err := client.GetQuotes(symbols)
+		d()
+		if err != nil {
+			sp.Stop()
+			return err
+		}
+		data = quotes
+	}
+
+	sp.Stop()
+
+	if errCount == len(symbols) {
+		os.Exit(2)
+	}
+
+	if err := output.Write(os.Stdout, data, flagFormat, flagCompact); err != nil {
+		return err
+	}
+
+	if errCount > 0 {
+		os.Exit(1)
+	}
+
 	return nil
 }
