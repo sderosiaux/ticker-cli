@@ -82,8 +82,12 @@ func (s *Session) getCookie() error {
 		}
 	}
 
-	// Look for A3 cookie
+	// Look for A3 cookie (fc.yahoo.com returns 404 with Set-Cookie, which is expected)
 	cookies := parseSetCookieHeaders(resp.Header)
+	if len(cookies) == 0 {
+		// Fallback: try resp.Cookies() (works with httptest)
+		cookies = resp.Cookies()
+	}
 	s.cookies = cookies
 
 	hasA3 := false

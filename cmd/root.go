@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"sync/atomic"
 	"time"
@@ -84,8 +85,8 @@ func computeChange(hist *model.HistoryResult, period string) *model.ChangeResult
 	}
 	first := hist.Points[0]
 	last := hist.Points[len(hist.Points)-1]
-	change := last.Close - first.Close
-	changePct := (change / first.Close) * 100
+	change := math.Round((last.Close-first.Close)*100) / 100
+	changePct := math.Round((change/first.Close)*10000) / 100
 	return &model.ChangeResult{
 		Symbol:        hist.Symbol,
 		Name:          hist.Name,
@@ -110,6 +111,7 @@ func run(cmd *cobra.Command, args []string) error {
 		"https://query2.finance.yahoo.com",
 		"https://consent.yahoo.com",
 	)
+	client.SetSessionRootURL("https://fc.yahoo.com")
 
 	debug.Log("initializing session")
 	done := debug.Timer("session.Init")

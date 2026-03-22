@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -11,6 +12,11 @@ import (
 
 	"github.com/sderosiaux/ticker-check/internal/model"
 )
+
+// round2 rounds a float64 to 2 decimal places.
+func round2(v float64) float64 {
+	return math.Round(v*100) / 100
+}
 
 // Client wraps a Session and provides Yahoo Finance API methods.
 type Client struct {
@@ -37,6 +43,12 @@ func NewClient(baseURL, crumbURL, consentURL string) *Client {
 			consentURL: consentURL,
 		},
 	}
+}
+
+// SetSessionRootURL overrides the URL used to fetch session cookies.
+// Default is the crumbURL, but fc.yahoo.com is needed in production.
+func (c *Client) SetSessionRootURL(u string) {
+	c.session.rootURL = u
 }
 
 // Init initializes the underlying session (fetches cookies + crumb).
@@ -122,20 +134,20 @@ func (c *Client) GetQuotes(symbols []string) ([]model.Quote, error) {
 		quotes = append(quotes, model.Quote{
 			Symbol:        yq.Symbol,
 			Name:          yq.ShortName,
-			Price:         yq.RegularMarketPrice.Raw,
-			Change:        yq.RegularMarketChange.Raw,
-			ChangePercent: yq.RegularMarketChangePercent.Raw,
+			Price:         round2(yq.RegularMarketPrice.Raw),
+			Change:        round2(yq.RegularMarketChange.Raw),
+			ChangePercent: round2(yq.RegularMarketChangePercent.Raw),
 			Currency:      yq.Currency,
 			MarketState:   yq.MarketState,
 			Exchange:      yq.FullExchangeName,
-			Open:          yq.RegularMarketOpen.Raw,
-			High:          yq.RegularMarketDayHigh.Raw,
-			Low:           yq.RegularMarketDayLow.Raw,
-			PrevClose:     yq.RegularMarketPreviousClose.Raw,
+			Open:          round2(yq.RegularMarketOpen.Raw),
+			High:          round2(yq.RegularMarketDayHigh.Raw),
+			Low:           round2(yq.RegularMarketDayLow.Raw),
+			PrevClose:     round2(yq.RegularMarketPreviousClose.Raw),
 			Volume:        yq.RegularMarketVolume.Raw,
 			MarketCap:     yq.MarketCap.Raw,
-			Week52High:    yq.FiftyTwoWeekHigh.Raw,
-			Week52Low:     yq.FiftyTwoWeekLow.Raw,
+			Week52High:    round2(yq.FiftyTwoWeekHigh.Raw),
+			Week52Low:     round2(yq.FiftyTwoWeekLow.Raw),
 		})
 	}
 	return quotes, nil

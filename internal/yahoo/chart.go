@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -111,21 +112,22 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 		return nil, fmt.Errorf("no quote indicators for %s", symbol)
 	}
 
+	r2 := func(v float64) float64 { return math.Round(v*100) / 100 }
 	for i, ts := range r.Timestamp {
 		pt := model.HistoryPoint{
 			Date: time.Unix(ts, 0).UTC().Format("2006-01-02"),
 		}
 		if i < len(q[0].Open) {
-			pt.Open = q[0].Open[i]
+			pt.Open = r2(q[0].Open[i])
 		}
 		if i < len(q[0].High) {
-			pt.High = q[0].High[i]
+			pt.High = r2(q[0].High[i])
 		}
 		if i < len(q[0].Low) {
-			pt.Low = q[0].Low[i]
+			pt.Low = r2(q[0].Low[i])
 		}
 		if i < len(q[0].Close) {
-			pt.Close = q[0].Close[i]
+			pt.Close = r2(q[0].Close[i])
 		}
 		if i < len(q[0].Volume) {
 			pt.Volume = q[0].Volume[i]

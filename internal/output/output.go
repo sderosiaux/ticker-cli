@@ -18,6 +18,9 @@ func IsTTY() bool {
 // Supported formats: "json", "csv", "table".
 // When compact is true and format is "json", NDJSON is emitted.
 func Write(w io.Writer, data interface{}, format string, compact bool) error {
+	if compact {
+		format = "json"
+	}
 	switch format {
 	case "json":
 		return writeJSON(w, data, compact)
