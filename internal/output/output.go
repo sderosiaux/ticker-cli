@@ -31,7 +31,7 @@ func Write(w io.Writer, data any, format string, compact bool) error {
 	case "table":
 		return writeTable(w, data)
 	default:
-		return fmt.Errorf("unsupported format: %s", format)
+		return fmt.Errorf("%s: %w", format, ErrUnsupportedFormat)
 	}
 }
 

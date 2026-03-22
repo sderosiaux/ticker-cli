@@ -1,10 +1,12 @@
-package yahoo
+package yahoo_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+
+	"github.com/sderosiaux/ticker-cli/internal/yahoo"
 )
 
 func TestNewSession_GetsCookieAndCrumb(t *testing.T) {
@@ -21,7 +23,7 @@ func TestNewSession_GetsCookieAndCrumb(t *testing.T) {
 	}))
 	defer crumb.Close()
 
-	sess, err := NewSession(root.URL, crumb.URL, "")
+	sess, err := yahoo.NewSession(root.URL, crumb.URL, "")
 	if err != nil {
 		t.Fatalf("NewSession failed: %v", err)
 	}
@@ -63,7 +65,7 @@ func TestNewSession_Refresh(t *testing.T) {
 	}))
 	defer crumb.Close()
 
-	sess, err := NewSession(root.URL, crumb.URL, "")
+	sess, err := yahoo.NewSession(root.URL, crumb.URL, "")
 	if err != nil {
 		t.Fatalf("NewSession failed: %v", err)
 	}
@@ -108,7 +110,7 @@ func TestNewSession_EUConsentFlow(t *testing.T) {
 	}))
 	defer crumb.Close()
 
-	sess, err := NewSession(root.URL, crumb.URL, consent.URL)
+	sess, err := yahoo.NewSession(root.URL, crumb.URL, consent.URL)
 	if err != nil {
 		t.Fatalf("NewSession with EU consent failed: %v", err)
 	}
@@ -150,7 +152,7 @@ func TestNewSession_CrumbSentWithCookies(t *testing.T) {
 	}))
 	defer crumb.Close()
 
-	_, err := NewSession(root.URL, crumb.URL, "")
+	_, err := yahoo.NewSession(root.URL, crumb.URL, "")
 	if err != nil {
 		t.Fatalf("NewSession failed: %v", err)
 	}

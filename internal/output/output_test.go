@@ -1,4 +1,4 @@
-package output
+package output_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sderosiaux/ticker-cli/internal/model"
+	"github.com/sderosiaux/ticker-cli/internal/output"
 )
 
 var testQuotes = []model.Quote{
@@ -60,7 +61,7 @@ var testChanges = []model.ChangeResult{
 func TestJSON_Quotes(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testQuotes, "json", false)
+	err := output.Write(&buf, testQuotes, "json", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +85,7 @@ func TestJSON_Quotes(t *testing.T) {
 func TestJSON_History(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testHistory, "json", false)
+	err := output.Write(&buf, testHistory, "json", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +105,7 @@ func TestJSON_History(t *testing.T) {
 func TestJSON_Changes(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testChanges, "json", false)
+	err := output.Write(&buf, testChanges, "json", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +125,7 @@ func TestJSON_Changes(t *testing.T) {
 func TestCompact_Quotes(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testQuotes, "json", true)
+	err := output.Write(&buf, testQuotes, "json", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +156,7 @@ func TestCompact_Quotes(t *testing.T) {
 func TestCompact_Changes(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testChanges, "json", true)
+	err := output.Write(&buf, testChanges, "json", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +181,7 @@ func TestCompact_Changes(t *testing.T) {
 func TestCSV_Quotes(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testQuotes, "csv", false)
+	err := output.Write(&buf, testQuotes, "csv", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +209,7 @@ func TestCSV_Quotes(t *testing.T) {
 func TestCSV_History(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testHistory, "csv", false)
+	err := output.Write(&buf, testHistory, "csv", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +233,7 @@ func TestCSV_History(t *testing.T) {
 func TestCSV_Changes(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testChanges, "csv", false)
+	err := output.Write(&buf, testChanges, "csv", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +253,7 @@ func TestCSV_Changes(t *testing.T) {
 func TestTable_Quotes(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testQuotes, "table", false)
+	err := output.Write(&buf, testQuotes, "table", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +275,7 @@ func TestTable_Quotes(t *testing.T) {
 func TestTable_History(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testHistory, "table", false)
+	err := output.Write(&buf, testHistory, "table", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +293,7 @@ func TestTable_History(t *testing.T) {
 func TestTable_Changes(t *testing.T) {
 	var buf bytes.Buffer
 
-	err := Write(&buf, testChanges, "table", false)
+	err := output.Write(&buf, testChanges, "table", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +310,7 @@ func TestTable_Changes(t *testing.T) {
 
 func TestUnsupportedFormat(t *testing.T) {
 	var buf bytes.Buffer
-	err := Write(&buf, testQuotes, "xml", false)
+	err := output.Write(&buf, testQuotes, "xml", false)
 
 	if err == nil {
 		t.Error("expected error for unsupported format")
@@ -318,7 +319,7 @@ func TestUnsupportedFormat(t *testing.T) {
 
 func TestUnsupportedData(t *testing.T) {
 	var buf bytes.Buffer
-	err := Write(&buf, "not a slice", "json", false)
+	err := output.Write(&buf, "not a slice", "json", false)
 
 	if err == nil {
 		t.Error("expected error for unsupported data type")

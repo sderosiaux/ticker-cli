@@ -1,10 +1,12 @@
-package yahoo
+package yahoo_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/sderosiaux/ticker-cli/internal/yahoo"
 )
 
 func newChartTestServer(chartHandler http.HandlerFunc) *httptest.Server {
@@ -124,7 +126,7 @@ func TestGetChart_Range(t *testing.T) {
 	})
 	defer srv.Close()
 
-	c := NewClient(srv.URL, srv.URL, "")
+	c := yahoo.NewClient(srv.URL, srv.URL, "")
 
 	err := c.Init()
 	if err != nil {
@@ -191,7 +193,7 @@ func TestGetChart_DateRange(t *testing.T) {
 	})
 	defer srv.Close()
 
-	c := NewClient(srv.URL, srv.URL, "")
+	c := yahoo.NewClient(srv.URL, srv.URL, "")
 
 	err := c.Init()
 	if err != nil {

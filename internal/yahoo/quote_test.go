@@ -1,10 +1,12 @@
-package yahoo
+package yahoo_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/sderosiaux/ticker-cli/internal/yahoo"
 )
 
 // newTestServer creates a single httptest server that handles
@@ -78,7 +80,7 @@ func TestGetQuotes(t *testing.T) {
 	})
 	defer srv.Close()
 
-	c := NewClient(srv.URL, srv.URL, "")
+	c := yahoo.NewClient(srv.URL, srv.URL, "")
 
 	err := c.Init()
 	if err != nil {
@@ -160,7 +162,7 @@ func TestGetQuotes_MultipleSymbols(t *testing.T) {
 	})
 	defer srv.Close()
 
-	c := NewClient(srv.URL, srv.URL, "")
+	c := yahoo.NewClient(srv.URL, srv.URL, "")
 
 	err := c.Init()
 	if err != nil {
@@ -195,7 +197,7 @@ func TestGetQuotes_EmptySymbols(t *testing.T) {
 	})
 	defer srv.Close()
 
-	c := NewClient(srv.URL, srv.URL, "")
+	c := yahoo.NewClient(srv.URL, srv.URL, "")
 
 	err := c.Init()
 	if err != nil {

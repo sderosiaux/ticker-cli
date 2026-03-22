@@ -20,50 +20,38 @@ linters:
     - tagliatelle
     # forbid fmt.Fprintf — we need it for stderr
     - forbidigo
-    # returning interfaces is fine
-    - ireturn
-    # named returns are ok
-    - nonamedreturns
     # magic numbers in CLI formatting are fine
     - mnd
     # Go 1.22+ handles loop var capture
     - copyloopvar
-    # TODO comments are ok
-    - godox
-    # function length — some functions are naturally long
-    - funlen
-    # cognitive complexity — already covered by cyclop
+    # cognitive complexity — doublon with cyclop
     - gocognit
-    # nested if — readability is subjective
-    - nestif
-    # cyclop complexity — CLI run() is naturally complex
-    - cyclop
     # no globals — CLI needs package-level vars for flags
     - gochecknoglobals
     # no init — cobra uses init()
     - gochecknoinits
-    # error wrapping — too strict for a CLI
-    - err113
     # context in struct — not relevant here
     - containedctx
-    # non-inherited context
-    - noctx
-    # parallel test — not needed for httptest
+    # parallel test — httptest servers not thread-safe
     - paralleltest
-    # wrap errors — overkill for CLI
-    - wrapcheck
-    # unparam — too noisy
+    # unparam — too many false positives
     - unparam
     # declaration order
     - decorder
     # function order
     - funcorder
-    # test package naming
-    - testpackage
     # embedded struct field order
     - embeddedstructfieldcheck
     # recvcheck
     - recvcheck
+  settings:
+    funlen:
+      lines: 100
+      statements: 60
+    cyclop:
+      max-complexity: 15
+    nestif:
+      min-complexity: 5
 
 formatters:
   enable:

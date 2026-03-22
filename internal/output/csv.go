@@ -25,7 +25,12 @@ func writeCSV(w io.Writer, data any) error {
 			})
 		}
 
-		return cw.Error()
+		err := cw.Error()
+		if err != nil {
+			return fmt.Errorf("csv write: %w", err)
+		}
+
+		return nil
 	}
 
 	if history, ok := toHistory(data); ok {
@@ -44,7 +49,12 @@ func writeCSV(w io.Writer, data any) error {
 			}
 		}
 
-		return cw.Error()
+		err := cw.Error()
+		if err != nil {
+			return fmt.Errorf("csv write: %w", err)
+		}
+
+		return nil
 	}
 
 	if changes, ok := toChanges(data); ok {
@@ -62,8 +72,13 @@ func writeCSV(w io.Writer, data any) error {
 			})
 		}
 
-		return cw.Error()
+		err := cw.Error()
+		if err != nil {
+			return fmt.Errorf("csv write: %w", err)
+		}
+
+		return nil
 	}
 
-	return fmt.Errorf("unsupported data type for CSV: %T", data)
+	return fmt.Errorf("%T: %w for CSV", data, ErrUnsupportedDataType)
 }

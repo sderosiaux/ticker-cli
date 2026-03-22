@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -37,6 +38,13 @@ type ExitError struct {
 
 func (e *ExitError) Error() string { return e.Msg }
 
+// Sentinel errors for flag validation.
+var (
+	ErrDateFormat   = errors.New("invalid date format")
+	ErrDateFuture   = errors.New("date is in the future")
+	ErrInvalidRange = errors.New("invalid range")
+)
+
 var validRanges = map[string]bool{
 	"1d": true, "5d": true, "1mo": true, "3mo": true,
 	"6mo": true, "1y": true, "ytd": true,
@@ -70,7 +78,12 @@ func init() {
 
 // Execute runs the root command.
 func Execute() error {
-	return rootCmd.Execute()
+	err := rootCmd.Execute()
+	if err != nil {
+		return fmt.Errorf("execute: %w", err)
+	}
+
+	return nil
 }
 
 // stderrIsTTY reports whether stderr is a terminal.
@@ -147,6 +160,147 @@ func errorf(format string, args ...any) {
 	}
 }
 
+func fetchDate(client *yahoo.Client, symbols []string) (any, int, error) {
+	debug.Logf("mode: date=%s", flagDate)
+
+	errCount := 0
+	results := make([]model.HistoryResult, 0, len(symbols))
+
+	for _, sym := range symbols {
+		d := debug.Timer("GetChart " + sym)
+		hist, err := client.GetChart(sym, "", flagDate, flagDate)
+		d()
+
+		if err != nil {
+			errorf("%s: %v. Check symbol at https://finance.yahoo.com/quote/%s", sym, err, sym)
+			errCount++
+
+			continue
+		}
+
+		results = append(results, *hist)
+	}
+
+	return results, errCount, nil
+}
+
+func fetchRange(client *yahoo.Client, symbols []string) (any, int, error) {
+	debug.Logf("mode: range=%s", flagRange)
+
+	errCount := 0
+	results := make([]model.HistoryResult, 0, len(symbols))
+
+	for _, sym := range symbols {
+		d := debug.Timer("GetChart " + sym)
+		hist, err := client.GetChart(sym, flagRange, "", "")
+		d()
+
+		if err != nil {
+			errorf("%s: %v. Check symbol at https://finance.yahoo.com/quote/%s", sym, err, sym)
+			errCount++
+
+			continue
+		}
+
+		results = append(results, *hist)
+	}
+
+	return results, errCount, nil
+}
+
+func fetchWeeklyChange(client *yahoo.Client, symbols []string) (any, int, error) {
+	debug.Logf("mode: weekly-change")
+
+	errCount := 0
+	results := make([]model.ChangeResult, 0, len(symbols))
+
+	for _, sym := range symbols {
+		d := debug.Timer("GetChart " + sym)
+		hist, err := client.GetChart(sym, "5d", "", "")
+		d()
+
+		if err != nil {
+			errorf("%s: %v. Check symbol at https://finance.yahoo.com/quote/%s", sym, err, sym)
+			errCount++
+
+			continue
+		}
+
+		cr := computeChange(hist, "5d")
+		if cr == nil {
+			errorf("%s: insufficient data for weekly change", sym)
+			errCount++
+
+			continue
+		}
+
+		results = append(results, *cr)
+	}
+
+	return results, errCount, nil
+}
+
+func fetchYTD(client *yahoo.Client, symbols []string) (any, int, error) {
+	debug.Logf("mode: ytd")
+
+	errCount := 0
+	results := make([]model.ChangeResult, 0, len(symbols))
+
+	for _, sym := range symbols {
+		d := debug.Timer("GetChart " + sym)
+		hist, err := client.GetChart(sym, "ytd", "", "")
+		d()
+
+		if err != nil {
+			errorf("%s: %v. Check symbol at https://finance.yahoo.com/quote/%s", sym, err, sym)
+			errCount++
+
+			continue
+		}
+
+		cr := computeChange(hist, "ytd")
+		if cr == nil {
+			errorf("%s: insufficient data for YTD change", sym)
+			errCount++
+
+			continue
+		}
+
+		results = append(results, *cr)
+	}
+
+	return results, errCount, nil
+}
+
+func dispatch(client *yahoo.Client, symbols []string) (any, int, error) {
+	switch {
+	case flagDate != "":
+		return fetchDate(client, symbols)
+	case flagRange != "":
+		return fetchRange(client, symbols)
+	case flagWeeklyChange:
+		return fetchWeeklyChange(client, symbols)
+	case flagYTD:
+		return fetchYTD(client, symbols)
+	default:
+		return fetchQuotes(client, symbols)
+	}
+}
+
+func fetchQuotes(client *yahoo.Client, symbols []string) (any, int, error) {
+	debug.Logf("mode: quotes")
+
+	d := debug.Timer("GetQuotes")
+	quotes, err := client.GetQuotes(symbols)
+	d()
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("fetch quotes: %w", err)
+	}
+
+	return quotes, 0, nil
+}
+
 func run(_ *cobra.Command, args []string) error {
 	debug.Enabled = flagDebug
 	debug.ColorEnabled = stderrIsTTY()
@@ -156,16 +310,16 @@ func run(_ *cobra.Command, args []string) error {
 	if flagDate != "" {
 		t, err := time.Parse("2006-01-02", flagDate)
 		if err != nil {
-			return fmt.Errorf("invalid --date format: %s (expected YYYY-MM-DD)", flagDate)
+			return fmt.Errorf("--date %s: %w", flagDate, ErrDateFormat)
 		}
 
 		if t.After(time.Now()) {
-			return fmt.Errorf("--date %s is in the future", flagDate)
+			return fmt.Errorf("--date %s: %w", flagDate, ErrDateFuture)
 		}
 	}
 
 	if flagRange != "" && !validRanges[flagRange] {
-		return fmt.Errorf("invalid --range: %s (valid: 1d, 5d, 1mo, 3mo, 6mo, 1y, ytd)", flagRange)
+		return fmt.Errorf("--range %s: %w", flagRange, ErrInvalidRange)
 	}
 
 	sp := startSpinner("Fetching prices...")
@@ -197,124 +351,11 @@ func run(_ *cobra.Command, args []string) error {
 		errCount int
 	)
 
-	symbolErr := func(sym string, err error) {
-		errorf("%s: %v. Check symbol at https://finance.yahoo.com/quote/%s", sym, err, sym)
-		errCount++
-	}
+	data, errCount, err = dispatch(client, symbols)
+	if err != nil {
+		sp.Stop()
 
-	switch {
-	case flagDate != "":
-		debug.Logf("mode: date=%s", flagDate)
-
-		results := make([]model.HistoryResult, 0, len(symbols))
-		for _, sym := range symbols {
-			d := debug.Timer("GetChart " + sym)
-			hist, err := client.GetChart(sym, "", flagDate, flagDate)
-			d()
-
-			if err != nil {
-				symbolErr(sym, err)
-
-				continue
-			}
-
-			results = append(results, *hist)
-		}
-
-		data = results
-
-	case flagRange != "":
-		debug.Logf("mode: range=%s", flagRange)
-
-		results := make([]model.HistoryResult, 0, len(symbols))
-		for _, sym := range symbols {
-			d := debug.Timer("GetChart " + sym)
-			hist, err := client.GetChart(sym, flagRange, "", "")
-			d()
-
-			if err != nil {
-				symbolErr(sym, err)
-
-				continue
-			}
-
-			results = append(results, *hist)
-		}
-
-		data = results
-
-	case flagWeeklyChange:
-		debug.Logf("mode: weekly-change")
-
-		results := make([]model.ChangeResult, 0, len(symbols))
-		for _, sym := range symbols {
-			d := debug.Timer("GetChart " + sym)
-			hist, err := client.GetChart(sym, "5d", "", "")
-			d()
-
-			if err != nil {
-				symbolErr(sym, err)
-
-				continue
-			}
-
-			cr := computeChange(hist, "5d")
-			if cr == nil {
-				errorf("%s: insufficient data for weekly change", sym)
-				errCount++
-
-				continue
-			}
-
-			results = append(results, *cr)
-		}
-
-		data = results
-
-	case flagYTD:
-		debug.Logf("mode: ytd")
-
-		results := make([]model.ChangeResult, 0, len(symbols))
-		for _, sym := range symbols {
-			d := debug.Timer("GetChart " + sym)
-			hist, err := client.GetChart(sym, "ytd", "", "")
-			d()
-
-			if err != nil {
-				symbolErr(sym, err)
-
-				continue
-			}
-
-			cr := computeChange(hist, "ytd")
-			if cr == nil {
-				errorf("%s: insufficient data for YTD change", sym)
-				errCount++
-
-				continue
-			}
-
-			results = append(results, *cr)
-		}
-
-		data = results
-
-	default:
-		debug.Logf("mode: quotes")
-
-		d := debug.Timer("GetQuotes")
-		quotes, err := client.GetQuotes(symbols)
-		d()
-
-		if err != nil {
-			sp.Stop()
-			errorf("Failed to fetch quotes: %v", err)
-			fmt.Fprintf(os.Stderr, "  Try: ticker-cli --debug %s\n", strings.Join(symbols, " "))
-
-			return &ExitError{Code: 2, Msg: "quote fetch failed"}
-		}
-
-		data = quotes
+		return err
 	}
 
 	sp.Stop()
@@ -325,7 +366,7 @@ func run(_ *cobra.Command, args []string) error {
 
 	err = output.Write(os.Stdout, data, flagFormat, flagCompact)
 	if err != nil {
-		return err
+		return fmt.Errorf("write output: %w", err)
 	}
 
 	if errCount > 0 {

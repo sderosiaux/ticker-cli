@@ -2,6 +2,7 @@
 package yahoo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,9 +37,8 @@ type chartResponse struct {
 	} `json:"chart"`
 }
 
-// GetChart fetches historical OHLCV data for a symbol.
-// Use rangeStr (e.g. "5d", "1mo", "ytd") or dateFrom/dateTo ("YYYY-MM-DD").
-func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.HistoryResult, error) {
+// chartParams builds the query parameters for a chart request.
+func chartParams(rangeStr, dateFrom, dateTo, crumb string) (url.Values, error) {
 	params := url.Values{}
 	params.Set("interval", "1d")
 	params.Set("lang", "en-US")
@@ -67,64 +67,28 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 		params.Set("period2", strconv.FormatInt(endDate.UTC().Add(24*time.Hour).Unix(), 10))
 	}
 
-	if crumb := c.session.Crumb(); crumb != "" {
+	if crumb != "" {
 		params.Set("crumb", crumb)
 	}
 
-	endpoint := c.baseURL + "/v8/finance/chart/" + url.PathEscape(symbol) + "?" + params.Encode()
+	return params, nil
+}
 
-	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", userAgent)
-
-	for _, cookie := range c.session.Cookies() {
-		req.AddCookie(cookie)
-	}
-
-	body, err := c.doChartRequest(req)
-	if err != nil {
-		// Retry once with session refresh
-		refreshErr := c.session.Refresh()
-		if refreshErr != nil {
-			return nil, fmt.Errorf("session refresh: %w", refreshErr)
-		}
-
-		req2, _ := http.NewRequest(http.MethodGet, endpoint, nil)
-		req2.Header.Set("User-Agent", userAgent)
-
-		for _, cookie := range c.session.Cookies() {
-			req2.AddCookie(cookie)
-		}
-
-		body, err = c.doChartRequest(req2)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var cr chartResponse
-
-	err = json.Unmarshal(body, &cr)
-	if err != nil {
-		return nil, fmt.Errorf("decode chart response: %w", err)
-	}
-
+// parseChartResponse converts a raw chartResponse into a model.HistoryResult.
+func parseChartResponse(cr *chartResponse, symbol string) (*model.HistoryResult, error) {
 	if len(cr.Chart.Result) == 0 {
-		return nil, fmt.Errorf("no chart data for %s", symbol)
+		return nil, fmt.Errorf("%s: %w", symbol, ErrNoChartData)
 	}
 
 	r := cr.Chart.Result[0]
-	points := make([]model.HistoryPoint, 0, len(r.Timestamp))
-
 	q := r.Indicators.Quote
+
 	if len(q) == 0 {
-		return nil, fmt.Errorf("no quote indicators for %s", symbol)
+		return nil, fmt.Errorf("%s: %w", symbol, ErrNoIndicators)
 	}
 
 	r2 := func(v float64) float64 { return math.Round(v*100) / 100 }
+	points := make([]model.HistoryPoint, 0, len(r.Timestamp))
 
 	for i, ts := range r.Timestamp {
 		pt := model.HistoryPoint{
@@ -162,17 +126,78 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 	}, nil
 }
 
+// GetChart fetches historical OHLCV data for a symbol.
+// Use rangeStr (e.g. "5d", "1mo", "ytd") or dateFrom/dateTo ("YYYY-MM-DD").
+func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.HistoryResult, error) {
+	params, err := chartParams(rangeStr, dateFrom, dateTo, c.session.Crumb())
+	if err != nil {
+		return nil, err
+	}
+
+	endpoint := c.baseURL + "/v8/finance/chart/" + url.PathEscape(symbol) + "?" + params.Encode()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build chart request: %w", err)
+	}
+
+	req.Header.Set("User-Agent", userAgent)
+
+	for _, cookie := range c.session.Cookies() {
+		req.AddCookie(cookie)
+	}
+
+	body, err := c.doChartRequest(req)
+	if err != nil {
+		// Retry once with session refresh
+		refreshErr := c.session.Refresh()
+		if refreshErr != nil {
+			return nil, fmt.Errorf("session refresh: %w", refreshErr)
+		}
+
+		req2, err2 := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
+		if err2 != nil {
+			return nil, fmt.Errorf("build chart retry request: %w", err2)
+		}
+
+		req2.Header.Set("User-Agent", userAgent)
+
+		for _, cookie := range c.session.Cookies() {
+			req2.AddCookie(cookie)
+		}
+
+		body, err = c.doChartRequest(req2)
+		if err != nil {
+			return nil, fmt.Errorf("chart request retry: %w", err)
+		}
+	}
+
+	var cr chartResponse
+
+	err = json.Unmarshal(body, &cr)
+	if err != nil {
+		return nil, fmt.Errorf("decode chart response: %w", err)
+	}
+
+	return parseChartResponse(&cr, symbol)
+}
+
 func (c *Client) doChartRequest(req *http.Request) ([]byte, error) {
 	resp, err := c.session.client.Do(req) //nolint:gosec // URL is constructed from trusted baseURL
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("chart http request: %w", err)
 	}
 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("chart API returned %d", resp.StatusCode)
+		return nil, fmt.Errorf("chart API %d: %w", resp.StatusCode, ErrAPIStatus)
 	}
 
-	return io.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read chart response: %w", err)
+	}
+
+	return b, nil
 }

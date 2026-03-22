@@ -1,7 +1,7 @@
 package yahoo
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -42,7 +42,7 @@ func NewSession(rootURL, crumbURL, consentURL string) (*Session, error) {
 
 	err := s.Refresh()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new session: %w", err)
 	}
 
 	return s, nil
@@ -70,16 +70,16 @@ func (s *Session) Cookies() []*http.Cookie { return s.cookies }
 func (s *Session) Crumb() string { return s.crumb }
 
 func (s *Session) getCookie() error {
-	req, err := http.NewRequest(http.MethodGet, s.rootURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, s.rootURL, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("build cookie request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("fetch cookie: %w", err)
 	}
 
 	defer func() { _ = resp.Body.Close() }()
@@ -109,7 +109,7 @@ func (s *Session) getCookie() error {
 	}
 
 	if !hasA3 {
-		return errors.New("A3 cookie not found in response")
+		return ErrMissingCookie
 	}
 
 	return nil
@@ -126,9 +126,9 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 	currentURL := loc
 
 	for range 3 {
-		req, err := http.NewRequest(http.MethodGet, currentURL, nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, currentURL, nil)
 		if err != nil {
-			return err
+			return fmt.Errorf("build consent redirect request: %w", err)
 		}
 
 		req.Header.Set("User-Agent", userAgent)
@@ -139,7 +139,7 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 
 		resp, err := s.client.Do(req)
 		if err != nil {
-			return err
+			return fmt.Errorf("follow consent redirect: %w", err)
 		}
 
 		allCookies = append(allCookies, parseSetCookieHeaders(resp.Header)...)
@@ -176,9 +176,9 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 		postURL = s.consentURL
 	}
 
-	req, err := http.NewRequest(http.MethodPost, postURL, strings.NewReader(form.Encode()))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, postURL, strings.NewReader(form.Encode()))
 	if err != nil {
-		return err
+		return fmt.Errorf("build consent post request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", userAgent)
@@ -190,7 +190,7 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("post consent form: %w", err)
 	}
 
 	defer func() { _ = resp.Body.Close() }()
@@ -208,9 +208,9 @@ func (s *Session) getCrumb() error {
 		crumbEndpoint = s.crumbURL
 	}
 
-	req, err := http.NewRequest(http.MethodGet, crumbEndpoint, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, crumbEndpoint, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("build crumb request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", userAgent)
@@ -221,19 +221,19 @@ func (s *Session) getCrumb() error {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("fetch crumb: %w", err)
 	}
 
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("read crumb response: %w", err)
 	}
 
 	crumb := strings.TrimSpace(string(body))
 	if crumb == "" {
-		return errors.New("empty crumb response")
+		return ErrEmptyCrumb
 	}
 
 	s.crumb = crumb

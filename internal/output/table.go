@@ -66,7 +66,7 @@ func writeTableWithColor(w io.Writer, data any, useColor bool) error {
 		return tableChanges(w, changes, useColor)
 	}
 
-	return fmt.Errorf("unsupported data type for table: %T", data)
+	return fmt.Errorf("%T: %w for table", data, ErrUnsupportedDataType)
 }
 
 func tableQuotes(w io.Writer, quotes []model.Quote, useColor bool) error {

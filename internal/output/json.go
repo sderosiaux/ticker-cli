@@ -22,9 +22,14 @@ func writePrettyJSON(w io.Writer, data any) error {
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 
-		return enc.Encode(data)
+		err := enc.Encode(data)
+		if err != nil {
+			return fmt.Errorf("json encode: %w", err)
+		}
+
+		return nil
 	default:
-		return fmt.Errorf("unsupported data type for JSON: %T", data)
+		return fmt.Errorf("%T: %w for JSON", data, ErrUnsupportedDataType)
 	}
 }
 
@@ -41,7 +46,7 @@ func writeCompact(w io.Writer, data any) error {
 		return compactHistory(w, history)
 	}
 
-	return fmt.Errorf("unsupported data type for compact JSON: %T", data)
+	return fmt.Errorf("%T: %w for compact JSON", data, ErrUnsupportedDataType)
 }
 
 type compactQuote struct {
@@ -64,7 +69,7 @@ func compactQuotes(w io.Writer, quotes []model.Quote) error {
 			MarketState:   q.MarketState,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal compact quote: %w", err)
 		}
 
 		_, _ = fmt.Fprintf(w, "%s\n", b)
@@ -91,7 +96,7 @@ func compactChanges(w io.Writer, changes []model.ChangeResult) error {
 			Period:        c.Period,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal compact change: %w", err)
 		}
 
 		_, _ = fmt.Fprintf(w, "%s\n", b)
@@ -112,7 +117,7 @@ func compactHistory(w io.Writer, results []model.HistoryResult) error {
 			Points: r.Points,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal compact history: %w", err)
 		}
 
 		_, _ = fmt.Fprintf(w, "%s\n", b)

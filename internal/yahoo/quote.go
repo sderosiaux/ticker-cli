@@ -1,6 +1,7 @@
 package yahoo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -54,7 +55,12 @@ func (c *Client) SetSessionRootURL(u string) {
 
 // Init initializes the underlying session (fetches cookies + crumb).
 func (c *Client) Init() error {
-	return c.session.Refresh()
+	err := c.session.Refresh()
+	if err != nil {
+		return fmt.Errorf("session init: %w", err)
+	}
+
+	return nil
 }
 
 // quoteFields is the list of fields requested from the v7 API.
@@ -123,7 +129,7 @@ func (c *Client) GetQuotes(symbols []string) ([]model.Quote, error) {
 
 		body, err = c.fetchQuotes(symbols)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fetch quotes retry: %w", err)
 		}
 	}
 
@@ -171,9 +177,9 @@ func (c *Client) fetchQuotes(symbols []string) ([]byte, error) {
 
 	endpoint := c.baseURL + "/v7/finance/quote?" + params.Encode()
 
-	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build quote request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", userAgent)
@@ -184,14 +190,19 @@ func (c *Client) fetchQuotes(symbols []string) ([]byte, error) {
 
 	resp, err := c.session.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetch quotes: %w", err)
 	}
 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("quote API returned %d", resp.StatusCode)
+		return nil, fmt.Errorf("quote API %d: %w", resp.StatusCode, ErrAPIStatus)
 	}
 
-	return io.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read quote response: %w", err)
+	}
+
+	return b, nil
 }
