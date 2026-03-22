@@ -48,6 +48,16 @@ make install
 
 Requires Go 1.22+. Single binary, no config files, no API keys.
 
+## Claude Code skill
+
+Install the ticker skill so Claude automatically calls `ticker-cli` when you ask about prices:
+
+```bash
+npx skills add sderosiaux/ticker-cli
+```
+
+After that, just ask about stocks, crypto, gold, forex in conversation. Claude picks the right flags from context.
+
 ## Usage
 
 ### Current prices
@@ -166,16 +176,6 @@ No config files, no auth tokens, no state. Every call is self-contained.
 | Bonds | `^TNX` (US 10Y yield) |
 
 Find any symbol at [finance.yahoo.com](https://finance.yahoo.com).
-
-## Claude Code skill
-
-If you use [Claude Code](https://docs.anthropic.com/en/docs/claude-code), install the ticker skill so Claude automatically uses `ticker-cli` when you ask about prices:
-
-```bash
-npx skills add sderosiaux/ticker-cli
-```
-
-After that, Claude calls `ticker-cli` whenever you mention stocks, crypto, gold, forex, etc. No need to tell it how -- it picks the right flags from context.
 
 ## How it works
 
