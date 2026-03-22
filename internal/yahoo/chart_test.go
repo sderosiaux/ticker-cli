@@ -13,36 +13,41 @@ func newChartTestServer(chartHandler http.HandlerFunc) *httptest.Server {
 		if r.URL.Path == "/" {
 			http.SetCookie(w, &http.Cookie{Name: "A3", Value: "test-cookie"})
 			w.WriteHeader(http.StatusOK)
+
 			return
 		}
+
 		http.NotFound(w, r)
 	})
-	mux.HandleFunc("/v1/test/getcrumb", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/v1/test/getcrumb", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("test-crumb"))
 	})
 	mux.HandleFunc("/v8/finance/chart/", chartHandler)
+
 	return httptest.NewServer(mux)
 }
 
-func chartJSON(symbol, shortName, currency string, timestamps []int64, opens, highs, lows, closes []float64, volumes []int64) []byte {
-	resp := map[string]interface{}{
-		"chart": map[string]interface{}{
-			"result": []interface{}{
-				map[string]interface{}{
-					"meta": map[string]interface{}{
-						"symbol":    symbol,
-						"shortName": shortName,
-						"currency":  currency,
+func chartJSON(t *testing.T, symbol, shortName, currency string, timestamps []int64, opens, highs, lows, closes []float64, volumes []int64) []byte {
+	t.Helper()
+
+	resp := chartJSONPayload{
+		Chart: chartJSONChart{
+			Result: []chartJSONResult{
+				{
+					Meta: chartJSONMeta{
+						Symbol:    symbol,
+						ShortName: shortName,
+						Currency:  currency,
 					},
-					"timestamp": timestamps,
-					"indicators": map[string]interface{}{
-						"quote": []interface{}{
-							map[string]interface{}{
-								"open":   opens,
-								"high":   highs,
-								"low":    lows,
-								"close":  closes,
-								"volume": volumes,
+					Timestamp: timestamps,
+					Indicators: chartJSONIndicators{
+						Quote: []chartJSONQuote{
+							{
+								Open:   opens,
+								High:   highs,
+								Low:    lows,
+								Close:  closes,
+								Volume: volumes,
 							},
 						},
 					},
@@ -50,8 +55,45 @@ func chartJSON(symbol, shortName, currency string, timestamps []int64, opens, hi
 			},
 		},
 	}
-	b, _ := json.Marshal(resp)
+
+	b, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	return b
+}
+
+type chartJSONPayload struct {
+	Chart chartJSONChart `json:"chart"`
+}
+
+type chartJSONChart struct {
+	Result []chartJSONResult `json:"result"`
+}
+
+type chartJSONResult struct {
+	Meta       chartJSONMeta       `json:"meta"`
+	Timestamp  []int64             `json:"timestamp"`
+	Indicators chartJSONIndicators `json:"indicators"`
+}
+
+type chartJSONMeta struct {
+	Symbol    string `json:"symbol"`
+	ShortName string `json:"shortName"`
+	Currency  string `json:"currency"`
+}
+
+type chartJSONIndicators struct {
+	Quote []chartJSONQuote `json:"quote"`
+}
+
+type chartJSONQuote struct {
+	Open   []float64 `json:"open"`
+	High   []float64 `json:"high"`
+	Low    []float64 `json:"low"`
+	Close  []float64 `json:"close"`
+	Volume []int64   `json:"volume"`
 }
 
 func TestGetChart_Range(t *testing.T) {
@@ -60,15 +102,17 @@ func TestGetChart_Range(t *testing.T) {
 		if q.Get("range") != "5d" {
 			t.Errorf("expected range=5d, got %q", q.Get("range"))
 		}
+
 		if q.Get("interval") != "1d" {
 			t.Errorf("expected interval=1d, got %q", q.Get("interval"))
 		}
+
 		if q.Get("crumb") != "test-crumb" {
 			t.Errorf("expected crumb=test-crumb, got %q", q.Get("crumb"))
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(chartJSON(
+		_, _ = w.Write(chartJSON(t,
 			"AAPL", "Apple Inc.", "USD",
 			[]int64{1711065600, 1711152000, 1711238400, 1711324800, 1711411200},
 			[]float64{176.5, 177.0, 177.5, 178.0, 178.5},
@@ -81,7 +125,9 @@ func TestGetChart_Range(t *testing.T) {
 	defer srv.Close()
 
 	c := NewClient(srv.URL, srv.URL, "")
-	if err := c.Init(); err != nil {
+
+	err := c.Init()
+	if err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 
@@ -93,12 +139,15 @@ func TestGetChart_Range(t *testing.T) {
 	if result.Symbol != "AAPL" {
 		t.Errorf("symbol: got %q, want AAPL", result.Symbol)
 	}
+
 	if result.Name != "Apple Inc." {
 		t.Errorf("name: got %q, want Apple Inc.", result.Name)
 	}
+
 	if result.Currency != "USD" {
 		t.Errorf("currency: got %q, want USD", result.Currency)
 	}
+
 	if len(result.Points) != 5 {
 		t.Fatalf("expected 5 points, got %d", len(result.Points))
 	}
@@ -130,7 +179,7 @@ func TestGetChart_DateRange(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(chartJSON(
+		_, _ = w.Write(chartJSON(t,
 			"AAPL", "Apple Inc.", "USD",
 			[]int64{1774224000},
 			[]float64{180.0},
@@ -143,7 +192,9 @@ func TestGetChart_DateRange(t *testing.T) {
 	defer srv.Close()
 
 	c := NewClient(srv.URL, srv.URL, "")
-	if err := c.Init(); err != nil {
+
+	err := c.Init()
+	if err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 
@@ -155,6 +206,7 @@ func TestGetChart_DateRange(t *testing.T) {
 	if gotPeriod1 == "" {
 		t.Error("expected period1 query param to be set")
 	}
+
 	if gotPeriod2 == "" {
 		t.Error("expected period2 query param to be set")
 	}
@@ -162,6 +214,7 @@ func TestGetChart_DateRange(t *testing.T) {
 	if len(result.Points) != 1 {
 		t.Fatalf("expected 1 point, got %d", len(result.Points))
 	}
+
 	if result.Points[0].Close != 181.0 {
 		t.Errorf("close: got %f, want 181.0", result.Points[0].Close)
 	}

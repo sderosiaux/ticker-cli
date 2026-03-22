@@ -16,37 +16,49 @@ func newTestServer(quoteHandler http.HandlerFunc) *httptest.Server {
 		if r.URL.Path == "/" {
 			http.SetCookie(w, &http.Cookie{Name: "A3", Value: "test-cookie"})
 			w.WriteHeader(http.StatusOK)
+
 			return
 		}
+
 		http.NotFound(w, r)
 	})
-	mux.HandleFunc("/v1/test/getcrumb", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/v1/test/getcrumb", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("test-crumb"))
 	})
 	mux.HandleFunc("/v7/finance/quote", quoteHandler)
+
 	return httptest.NewServer(mux)
 }
 
-func quoteJSON(quotes ...map[string]interface{}) []byte {
-	resp := map[string]interface{}{
-		"quoteResponse": map[string]interface{}{
+func quoteJSON(t *testing.T, quotes ...map[string]any) []byte {
+	t.Helper()
+
+	resp := map[string]any{
+		"quoteResponse": map[string]any{
 			"result": quotes,
 			"error":  nil,
 		},
 	}
-	b, _ := json.Marshal(resp)
+
+	b, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	return b
 }
 
-func ff(val float64, fmt string) map[string]interface{} {
-	return map[string]interface{}{"raw": val, "fmt": fmt}
+func ff(val float64, fmtStr string) map[string]any {
+	return map[string]any{"raw": val, "fmt": fmtStr}
 }
 
+const testSymbol = "AAPL"
+
 func TestGetQuotes(t *testing.T) {
-	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(quoteJSON(map[string]interface{}{
-			"symbol":                     "AAPL",
+		_, _ = w.Write(quoteJSON(t, map[string]any{
+			"symbol":                     testSymbol,
 			"shortName":                  "Apple Inc.",
 			"regularMarketPrice":         ff(178.52, "178.52"),
 			"regularMarketChange":        ff(2.31, "2.31"),
@@ -67,54 +79,65 @@ func TestGetQuotes(t *testing.T) {
 	defer srv.Close()
 
 	c := NewClient(srv.URL, srv.URL, "")
-	if err := c.Init(); err != nil {
+
+	err := c.Init()
+	if err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 
-	quotes, err := c.GetQuotes([]string{"AAPL"})
+	quotes, err := c.GetQuotes([]string{testSymbol})
 	if err != nil {
 		t.Fatalf("GetQuotes failed: %v", err)
 	}
+
 	if len(quotes) != 1 {
 		t.Fatalf("expected 1 quote, got %d", len(quotes))
 	}
 
 	q := quotes[0]
-	if q.Symbol != "AAPL" {
+	if q.Symbol != testSymbol {
 		t.Errorf("symbol: got %q, want AAPL", q.Symbol)
 	}
+
 	if q.Price != 178.52 {
 		t.Errorf("price: got %f, want 178.52", q.Price)
 	}
+
 	if q.Change != 2.31 {
 		t.Errorf("change: got %f, want 2.31", q.Change)
 	}
+
 	if q.ChangePercent != 1.31 {
 		t.Errorf("changePercent: got %f, want 1.31", q.ChangePercent)
 	}
+
 	if q.MarketState != "REGULAR" {
 		t.Errorf("marketState: got %q, want REGULAR", q.MarketState)
 	}
+
 	if q.Currency != "USD" {
 		t.Errorf("currency: got %q, want USD", q.Currency)
 	}
+
 	if q.Exchange != "NasdaqGS" {
 		t.Errorf("exchange: got %q, want NasdaqGS", q.Exchange)
 	}
+
 	if q.Open != 176.0 {
 		t.Errorf("open: got %f, want 176.0", q.Open)
 	}
+
 	if q.Week52High != 199.62 {
 		t.Errorf("week52High: got %f, want 199.62", q.Week52High)
 	}
 }
 
 func TestGetQuotes_MultipleSymbols(t *testing.T) {
-	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(quoteJSON(
-			map[string]interface{}{
-				"symbol":                     "AAPL",
+		_, _ = w.Write(quoteJSON(t,
+			map[string]any{
+				"symbol":                     testSymbol,
 				"shortName":                  "Apple Inc.",
 				"regularMarketPrice":         ff(178.52, "178.52"),
 				"regularMarketChange":        ff(2.31, "2.31"),
@@ -123,7 +146,7 @@ func TestGetQuotes_MultipleSymbols(t *testing.T) {
 				"marketState":                "REGULAR",
 				"fullExchangeName":           "NasdaqGS",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"symbol":                     "BTC-USD",
 				"shortName":                  "Bitcoin USD",
 				"regularMarketPrice":         ff(65432.10, "65,432.10"),
@@ -138,36 +161,44 @@ func TestGetQuotes_MultipleSymbols(t *testing.T) {
 	defer srv.Close()
 
 	c := NewClient(srv.URL, srv.URL, "")
-	if err := c.Init(); err != nil {
+
+	err := c.Init()
+	if err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 
-	quotes, err := c.GetQuotes([]string{"AAPL", "BTC-USD"})
+	quotes, err := c.GetQuotes([]string{testSymbol, "BTC-USD"})
 	if err != nil {
 		t.Fatalf("GetQuotes failed: %v", err)
 	}
+
 	if len(quotes) != 2 {
 		t.Fatalf("expected 2 quotes, got %d", len(quotes))
 	}
-	if quotes[0].Symbol != "AAPL" {
+
+	if quotes[0].Symbol != testSymbol {
 		t.Errorf("first symbol: got %q, want AAPL", quotes[0].Symbol)
 	}
+
 	if quotes[1].Symbol != "BTC-USD" {
 		t.Errorf("second symbol: got %q, want BTC-USD", quotes[1].Symbol)
 	}
+
 	if quotes[1].Price != 65432.10 {
 		t.Errorf("BTC price: got %f, want 65432.10", quotes[1].Price)
 	}
 }
 
 func TestGetQuotes_EmptySymbols(t *testing.T) {
-	srv := newTestServer(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(func(_ http.ResponseWriter, _ *http.Request) {
 		t.Error("quote endpoint should not be called for empty symbols")
 	})
 	defer srv.Close()
 
 	c := NewClient(srv.URL, srv.URL, "")
-	if err := c.Init(); err != nil {
+
+	err := c.Init()
+	if err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 
@@ -175,6 +206,7 @@ func TestGetQuotes_EmptySymbols(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetQuotes failed: %v", err)
 	}
+
 	if len(quotes) != 0 {
 		t.Errorf("expected 0 quotes, got %d", len(quotes))
 	}

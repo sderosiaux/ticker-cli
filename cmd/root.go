@@ -1,3 +1,4 @@
+// Package cmd implements the CLI commands for ticker-cli.
 package cmd
 
 import (
@@ -67,13 +68,14 @@ func init() {
 	rootCmd.Flags().BoolVar(&flagDebug, "debug", false, "Show API calls and timing")
 }
 
+// Execute runs the root command.
 func Execute() error {
 	return rootCmd.Execute()
 }
 
 // stderrIsTTY reports whether stderr is a terminal.
 func stderrIsTTY() bool {
-	return term.IsTerminal(int(os.Stderr.Fd()))
+	return term.IsTerminal(int(os.Stderr.Fd())) //nolint:gosec // fd fits in int
 }
 
 // spinner displays a braille animation on stderr (only if TTY).
@@ -86,9 +88,12 @@ func startSpinner(msg string) *spinner {
 	s := &spinner{done: make(chan struct{})}
 	if !stderrIsTTY() {
 		close(s.done)
+
 		return s
 	}
+
 	s.running.Store(true)
+
 	go func() {
 		chars := []rune{'⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'}
 		i := 0
@@ -97,9 +102,11 @@ func startSpinner(msg string) *spinner {
 			time.Sleep(80 * time.Millisecond)
 			i++
 		}
+
 		fmt.Fprintf(os.Stderr, "\r\033[K")
 		close(s.done)
 	}()
+
 	return s
 }
 
@@ -113,10 +120,12 @@ func computeChange(hist *model.HistoryResult, period string) *model.ChangeResult
 	if len(hist.Points) < 2 {
 		return nil
 	}
+
 	first := hist.Points[0]
 	last := hist.Points[len(hist.Points)-1]
 	change := math.Round((last.Close-first.Close)*100) / 100
 	changePct := math.Round((change/first.Close)*10000) / 100
+
 	return &model.ChangeResult{
 		Symbol:        hist.Symbol,
 		Name:          hist.Name,
@@ -130,7 +139,7 @@ func computeChange(hist *model.HistoryResult, period string) *model.ChangeResult
 	}
 }
 
-func errorf(format string, args ...interface{}) {
+func errorf(format string, args ...any) {
 	if stderrIsTTY() {
 		fmt.Fprintf(os.Stderr, "\033[31m✗\033[0m "+format+"\n", args...)
 	} else {
@@ -138,7 +147,7 @@ func errorf(format string, args ...interface{}) {
 	}
 }
 
-func run(cmd *cobra.Command, args []string) error {
+func run(_ *cobra.Command, args []string) error {
 	debug.Enabled = flagDebug
 	debug.ColorEnabled = stderrIsTTY()
 	symbols := args
@@ -149,10 +158,12 @@ func run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("invalid --date format: %s (expected YYYY-MM-DD)", flagDate)
 		}
+
 		if t.After(time.Now()) {
 			return fmt.Errorf("--date %s is in the future", flagDate)
 		}
 	}
+
 	if flagRange != "" && !validRanges[flagRange] {
 		return fmt.Errorf("invalid --range: %s (valid: 1d, 5d, 1mo, 3mo, 6mo, 1y, ytd)", flagRange)
 	}
@@ -166,18 +177,23 @@ func run(cmd *cobra.Command, args []string) error {
 	)
 	client.SetSessionRootURL("https://fc.yahoo.com")
 
-	debug.Log("initializing session")
+	debug.Logf("initializing session")
+
 	done := debug.Timer("session.Init")
-	if err := client.Init(); err != nil {
+
+	err := client.Init()
+	if err != nil {
 		sp.Stop()
 		errorf("Session failed: %v", err)
 		fmt.Fprintf(os.Stderr, "  Try: ticker-cli --debug %s\n", strings.Join(symbols, " "))
+
 		return &ExitError{Code: 2, Msg: "session init failed"}
 	}
+
 	done()
 
 	var (
-		data     interface{}
+		data     any
 		errCount int
 	)
 
@@ -188,88 +204,116 @@ func run(cmd *cobra.Command, args []string) error {
 
 	switch {
 	case flagDate != "":
-		debug.Log("mode: date=%s", flagDate)
+		debug.Logf("mode: date=%s", flagDate)
+
 		results := make([]model.HistoryResult, 0, len(symbols))
 		for _, sym := range symbols {
 			d := debug.Timer("GetChart " + sym)
 			hist, err := client.GetChart(sym, "", flagDate, flagDate)
 			d()
+
 			if err != nil {
 				symbolErr(sym, err)
+
 				continue
 			}
+
 			results = append(results, *hist)
 		}
+
 		data = results
 
 	case flagRange != "":
-		debug.Log("mode: range=%s", flagRange)
+		debug.Logf("mode: range=%s", flagRange)
+
 		results := make([]model.HistoryResult, 0, len(symbols))
 		for _, sym := range symbols {
 			d := debug.Timer("GetChart " + sym)
 			hist, err := client.GetChart(sym, flagRange, "", "")
 			d()
+
 			if err != nil {
 				symbolErr(sym, err)
+
 				continue
 			}
+
 			results = append(results, *hist)
 		}
+
 		data = results
 
 	case flagWeeklyChange:
-		debug.Log("mode: weekly-change")
+		debug.Logf("mode: weekly-change")
+
 		results := make([]model.ChangeResult, 0, len(symbols))
 		for _, sym := range symbols {
 			d := debug.Timer("GetChart " + sym)
 			hist, err := client.GetChart(sym, "5d", "", "")
 			d()
+
 			if err != nil {
 				symbolErr(sym, err)
+
 				continue
 			}
+
 			cr := computeChange(hist, "5d")
 			if cr == nil {
 				errorf("%s: insufficient data for weekly change", sym)
 				errCount++
+
 				continue
 			}
+
 			results = append(results, *cr)
 		}
+
 		data = results
 
 	case flagYTD:
-		debug.Log("mode: ytd")
+		debug.Logf("mode: ytd")
+
 		results := make([]model.ChangeResult, 0, len(symbols))
 		for _, sym := range symbols {
 			d := debug.Timer("GetChart " + sym)
 			hist, err := client.GetChart(sym, "ytd", "", "")
 			d()
+
 			if err != nil {
 				symbolErr(sym, err)
+
 				continue
 			}
+
 			cr := computeChange(hist, "ytd")
 			if cr == nil {
 				errorf("%s: insufficient data for YTD change", sym)
 				errCount++
+
 				continue
 			}
+
 			results = append(results, *cr)
 		}
+
 		data = results
 
 	default:
-		debug.Log("mode: quotes")
+		debug.Logf("mode: quotes")
+
 		d := debug.Timer("GetQuotes")
 		quotes, err := client.GetQuotes(symbols)
 		d()
+
 		if err != nil {
 			sp.Stop()
 			errorf("Failed to fetch quotes: %v", err)
 			fmt.Fprintf(os.Stderr, "  Try: ticker-cli --debug %s\n", strings.Join(symbols, " "))
+
 			return &ExitError{Code: 2, Msg: "quote fetch failed"}
 		}
+
 		data = quotes
 	}
 
@@ -279,7 +323,8 @@ func run(cmd *cobra.Command, args []string) error {
 		return &ExitError{Code: 2, Msg: "all symbols failed"}
 	}
 
-	if err := output.Write(os.Stdout, data, flagFormat, flagCompact); err != nil {
+	err = output.Write(os.Stdout, data, flagFormat, flagCompact)
+	if err != nil {
 		return err
 	}
 

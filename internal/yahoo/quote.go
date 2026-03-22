@@ -31,10 +31,11 @@ func NewClient(baseURL, crumbURL, consentURL string) *Client {
 		session: &Session{
 			client: &http.Client{
 				Timeout: 10 * time.Second,
-				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				CheckRedirect: func(_ *http.Request, via []*http.Request) error {
 					if len(via) >= 1 {
 						return http.ErrUseLastResponse
 					}
+
 					return nil
 				},
 			},
@@ -102,7 +103,7 @@ type yahooQuote struct {
 type quoteResponse struct {
 	QuoteResponse struct {
 		Result []yahooQuote `json:"result"`
-		Error  interface{}  `json:"error"`
+		Error  any          `json:"error"`
 	} `json:"quoteResponse"`
 }
 
@@ -115,9 +116,11 @@ func (c *Client) GetQuotes(symbols []string) ([]model.Quote, error) {
 	body, err := c.fetchQuotes(symbols)
 	if err != nil {
 		// On failure, refresh session once and retry.
-		if refreshErr := c.session.Refresh(); refreshErr != nil {
+		refreshErr := c.session.Refresh()
+		if refreshErr != nil {
 			return nil, fmt.Errorf("session refresh: %w", refreshErr)
 		}
+
 		body, err = c.fetchQuotes(symbols)
 		if err != nil {
 			return nil, err
@@ -125,7 +128,9 @@ func (c *Client) GetQuotes(symbols []string) ([]model.Quote, error) {
 	}
 
 	var resp quoteResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
+
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
 		return nil, fmt.Errorf("decode quote response: %w", err)
 	}
 
@@ -150,6 +155,7 @@ func (c *Client) GetQuotes(symbols []string) ([]model.Quote, error) {
 			Week52Low:     round2(yq.FiftyTwoWeekLow.Raw),
 		})
 	}
+
 	return quotes, nil
 }
 
@@ -169,7 +175,9 @@ func (c *Client) fetchQuotes(symbols []string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("User-Agent", userAgent)
+
 	for _, cookie := range c.session.Cookies() {
 		req.AddCookie(cookie)
 	}
@@ -178,6 +186,7 @@ func (c *Client) fetchQuotes(symbols []string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {

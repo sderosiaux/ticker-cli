@@ -8,34 +8,39 @@ import (
 	"github.com/sderosiaux/ticker-cli/internal/model"
 )
 
-func writeJSON(w io.Writer, data interface{}, compact bool) error {
+func writeJSON(w io.Writer, data any, compact bool) error {
 	if compact {
 		return writeCompact(w, data)
 	}
+
 	return writePrettyJSON(w, data)
 }
 
-func writePrettyJSON(w io.Writer, data interface{}) error {
+func writePrettyJSON(w io.Writer, data any) error {
 	switch data.(type) {
 	case []model.Quote, []model.HistoryResult, []model.ChangeResult:
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(data)
 	default:
 		return fmt.Errorf("unsupported data type for JSON: %T", data)
 	}
 }
 
-func writeCompact(w io.Writer, data interface{}) error {
+func writeCompact(w io.Writer, data any) error {
 	if quotes, ok := toQuotes(data); ok {
 		return compactQuotes(w, quotes)
 	}
+
 	if changes, ok := toChanges(data); ok {
 		return compactChanges(w, changes)
 	}
+
 	if history, ok := toHistory(data); ok {
 		return compactHistory(w, history)
 	}
+
 	return fmt.Errorf("unsupported data type for compact JSON: %T", data)
 }
 
@@ -61,8 +66,10 @@ func compactQuotes(w io.Writer, quotes []model.Quote) error {
 		if err != nil {
 			return err
 		}
+
 		_, _ = fmt.Fprintf(w, "%s\n", b)
 	}
+
 	return nil
 }
 
@@ -86,8 +93,10 @@ func compactChanges(w io.Writer, changes []model.ChangeResult) error {
 		if err != nil {
 			return err
 		}
+
 		_, _ = fmt.Fprintf(w, "%s\n", b)
 	}
+
 	return nil
 }
 
@@ -105,7 +114,9 @@ func compactHistory(w io.Writer, results []model.HistoryResult) error {
 		if err != nil {
 			return err
 		}
+
 		_, _ = fmt.Fprintf(w, "%s\n", b)
 	}
+
 	return nil
 }

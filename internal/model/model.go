@@ -1,5 +1,7 @@
+// Package model defines data types used across ticker-cli.
 package model
 
+// Quote holds a real-time price quote for a single symbol.
 type Quote struct {
 	Symbol        string  `json:"symbol"`
 	Name          string  `json:"name"`
@@ -19,6 +21,7 @@ type Quote struct {
 	Week52Low     float64 `json:"week52Low,omitempty"`
 }
 
+// HistoryPoint is a single OHLCV data point.
 type HistoryPoint struct {
 	Date   string  `json:"date"`
 	Open   float64 `json:"open"`
@@ -28,6 +31,7 @@ type HistoryPoint struct {
 	Volume int64   `json:"volume"`
 }
 
+// HistoryResult groups historical data points for a symbol.
 type HistoryResult struct {
 	Symbol   string         `json:"symbol"`
 	Name     string         `json:"name"`
@@ -35,6 +39,7 @@ type HistoryResult struct {
 	Points   []HistoryPoint `json:"points"`
 }
 
+// ChangeResult holds a computed price change over a period.
 type ChangeResult struct {
 	Symbol        string  `json:"symbol"`
 	Name          string  `json:"name"`

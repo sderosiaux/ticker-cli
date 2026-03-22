@@ -4,9 +4,10 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"strconv"
 )
 
-func writeCSV(w io.Writer, data interface{}) error {
+func writeCSV(w io.Writer, data any) error {
 	cw := csv.NewWriter(w)
 	defer cw.Flush()
 
@@ -23,6 +24,7 @@ func writeCSV(w io.Writer, data interface{}) error {
 				q.MarketState,
 			})
 		}
+
 		return cw.Error()
 	}
 
@@ -37,10 +39,11 @@ func writeCSV(w io.Writer, data interface{}) error {
 					fmt.Sprintf("%.2f", p.High),
 					fmt.Sprintf("%.2f", p.Low),
 					fmt.Sprintf("%.2f", p.Close),
-					fmt.Sprintf("%d", p.Volume),
+					strconv.FormatInt(p.Volume, 10),
 				})
 			}
 		}
+
 		return cw.Error()
 	}
 
@@ -58,6 +61,7 @@ func writeCSV(w io.Writer, data interface{}) error {
 				c.Period,
 			})
 		}
+
 		return cw.Error()
 	}
 

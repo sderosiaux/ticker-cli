@@ -19,12 +19,15 @@ func colorize(val float64, s string, useColor bool) string {
 	if !useColor {
 		return s
 	}
+
 	if val > 0 {
 		return colorGreen + s + colorReset
 	}
+
 	if val < 0 {
 		return colorRed + s + colorReset
 	}
+
 	return s
 }
 
@@ -32,31 +35,37 @@ func signPrefix(v float64) string {
 	if v > 0 {
 		return "+"
 	}
+
 	return ""
 }
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
 		return s
 	}
-	return s[:max-1] + "."
+
+	return s[:maxLen-1] + "."
 }
 
-func writeTable(w io.Writer, data interface{}) error {
+func writeTable(w io.Writer, data any) error {
 	useColor := IsTTY()
+
 	return writeTableWithColor(w, data, useColor)
 }
 
-func writeTableWithColor(w io.Writer, data interface{}, useColor bool) error {
+func writeTableWithColor(w io.Writer, data any, useColor bool) error {
 	if quotes, ok := toQuotes(data); ok {
 		return tableQuotes(w, quotes, useColor)
 	}
+
 	if history, ok := toHistory(data); ok {
 		return tableHistory(w, history)
 	}
+
 	if changes, ok := toChanges(data); ok {
 		return tableChanges(w, changes, useColor)
 	}
+
 	return fmt.Errorf("unsupported data type for table: %T", data)
 }
 
@@ -77,6 +86,7 @@ func tableQuotes(w io.Writer, quotes []model.Quote, useColor bool) error {
 			q.MarketState,
 		)
 	}
+
 	return nil
 }
 
@@ -92,6 +102,7 @@ func tableHistory(w io.Writer, results []model.HistoryResult) error {
 		}
 		_, _ = fmt.Fprintln(w)
 	}
+
 	return nil
 }
 
@@ -112,11 +123,13 @@ func tableChanges(w io.Writer, changes []model.ChangeResult, useColor bool) erro
 			c.Period,
 		)
 	}
+
 	return nil
 }
 
 func formatPrice(price float64, currency string) string {
 	sym := "$"
+
 	switch currency {
 	case "EUR":
 		sym = "\u20ac"
@@ -125,23 +138,29 @@ func formatPrice(price float64, currency string) string {
 	case "JPY":
 		sym = "\u00a5"
 	}
+
 	raw := fmt.Sprintf("%.2f", price)
 	parts := strings.SplitN(raw, ".", 2)
 	intPart := parts[0]
 	// insert commas
 	if len(intPart) > 3 {
 		var b strings.Builder
+
 		offset := len(intPart) % 3
 		if offset > 0 {
 			b.WriteString(intPart[:offset])
 		}
+
 		for i := offset; i < len(intPart); i += 3 {
 			if b.Len() > 0 {
 				b.WriteByte(',')
 			}
+
 			b.WriteString(intPart[i : i+3])
 		}
+
 		intPart = b.String()
 	}
+
 	return fmt.Sprintf("%s%s.%s", sym, intPart, parts[1])
 }

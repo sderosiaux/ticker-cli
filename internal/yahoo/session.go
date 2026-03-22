@@ -27,10 +27,11 @@ func NewSession(rootURL, crumbURL, consentURL string) (*Session, error) {
 	s := &Session{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			CheckRedirect: func(_ *http.Request, via []*http.Request) error {
 				if len(via) >= 1 {
 					return http.ErrUseLastResponse
 				}
+
 				return nil
 			},
 		},
@@ -38,20 +39,27 @@ func NewSession(rootURL, crumbURL, consentURL string) (*Session, error) {
 		crumbURL:   crumbURL,
 		consentURL: consentURL,
 	}
-	if err := s.Refresh(); err != nil {
+
+	err := s.Refresh()
+	if err != nil {
 		return nil, err
 	}
+
 	return s, nil
 }
 
 // Refresh re-fetches cookies and crumb.
 func (s *Session) Refresh() error {
-	if err := s.getCookie(); err != nil {
+	err := s.getCookie()
+	if err != nil {
 		return fmt.Errorf("get cookie: %w", err)
 	}
-	if err := s.getCrumb(); err != nil {
+
+	err = s.getCrumb()
+	if err != nil {
 		return fmt.Errorf("get crumb: %w", err)
 	}
+
 	return nil
 }
 
@@ -66,12 +74,14 @@ func (s *Session) getCookie() error {
 	if err != nil {
 		return err
 	}
+
 	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	// Check for EU consent redirect
@@ -88,6 +98,7 @@ func (s *Session) getCookie() error {
 		// Fallback: try resp.Cookies() (works with httptest)
 		cookies = resp.Cookies()
 	}
+
 	s.cookies = cookies
 
 	hasA3 := false
@@ -96,9 +107,11 @@ func (s *Session) getCookie() error {
 			hasA3 = true
 		}
 	}
+
 	if !hasA3 {
 		return errors.New("A3 cookie not found in response")
 	}
+
 	return nil
 }
 
@@ -111,12 +124,15 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 
 	// Follow redirect to consent page (up to 3 hops)
 	currentURL := loc
-	for i := 0; i < 3; i++ {
+
+	for range 3 {
 		req, err := http.NewRequest(http.MethodGet, currentURL, nil)
 		if err != nil {
 			return err
 		}
+
 		req.Header.Set("User-Agent", userAgent)
+
 		for _, c := range allCookies {
 			req.AddCookie(c)
 		}
@@ -125,15 +141,18 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 		if err != nil {
 			return err
 		}
+
 		allCookies = append(allCookies, parseSetCookieHeaders(resp.Header)...)
 
 		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
 			currentURL = resp.Header.Get("Location")
 			_ = resp.Body.Close()
+
 			continue
 		}
 
 		_ = resp.Body.Close()
+
 		break
 	}
 
@@ -142,6 +161,7 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 	if err != nil {
 		return fmt.Errorf("parse consent URL: %w", err)
 	}
+
 	sessionID := parsed.Query().Get("sessionId")
 	gcrumb := parsed.Query().Get("gcrumb")
 
@@ -160,8 +180,10 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 	if err != nil {
 		return err
 	}
+
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 	for _, c := range allCookies {
 		req.AddCookie(c)
 	}
@@ -170,10 +192,12 @@ func (s *Session) getCookieEU(initialResp *http.Response) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	allCookies = append(allCookies, parseSetCookieHeaders(resp.Header)...)
 	s.cookies = allCookies
+
 	return nil
 }
 
@@ -188,7 +212,9 @@ func (s *Session) getCrumb() error {
 	if err != nil {
 		return err
 	}
+
 	req.Header.Set("User-Agent", userAgent)
+
 	for _, c := range s.cookies {
 		req.AddCookie(c)
 	}
@@ -197,6 +223,7 @@ func (s *Session) getCrumb() error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
@@ -208,26 +235,32 @@ func (s *Session) getCrumb() error {
 	if crumb == "" {
 		return errors.New("empty crumb response")
 	}
+
 	s.crumb = crumb
+
 	return nil
 }
 
 // parseSetCookieHeaders extracts cookies from Set-Cookie headers manually.
 func parseSetCookieHeaders(h http.Header) []*http.Cookie {
 	var cookies []*http.Cookie
+
 	for _, line := range h.Values("Set-Cookie") {
 		parts := strings.SplitN(line, ";", 2)
 		if len(parts) == 0 {
 			continue
 		}
+
 		nv := strings.SplitN(strings.TrimSpace(parts[0]), "=", 2)
 		if len(nv) != 2 {
 			continue
 		}
+
 		cookies = append(cookies, &http.Cookie{
 			Name:  nv[0],
 			Value: nv[1],
 		})
 	}
+
 	return cookies
 }

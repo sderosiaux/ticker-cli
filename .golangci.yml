@@ -1,37 +1,69 @@
 version: "2"
 
 linters:
-  presets:
-    - bugs
-    - comment
-    - complexity
-    - error
-    - format
-    - import
-    - metalinter
-    - module
-    - performance
-    - sql
-    - style
-    - test
-    - unused
+  default: all
   disable:
-    # too noisy for a CLI tool
-    - exhaustruct      # requires all struct fields to be set
-    - varnamelen       # short var names are fine in Go
-    - wsl              # whitespace style is subjective
-    - godot            # comment dots
-    - lll              # line length — gofmt handles this
-    # gofumpt is a formatter, disabled via formatters section
-    - depguard         # no dependency policy needed
-    - tagliatelle      # json tag style is already consistent
-    - forbidigo        # we need fmt.Fprintf to stderr
-    # gci is a formatter, disabled via formatters section
-    - ireturn          # returning interfaces is fine
-    - nonamedreturns   # named returns are ok for docs
-    - mnd              # magic numbers in CLI/formatting are fine
-    - copyloopvar      # Go 1.22+ handles this
-    - godox            # TODO comments are ok during development
+    # struct completeness — too noisy for a CLI tool
+    - exhaustruct
+    # short var names are idiomatic Go
+    - varnamelen
+    # whitespace/style — gofmt handles this
+    - wsl
+    - wsl_v5
+    # comment dots
+    - godot
+    # line length
+    - lll
+    # dependency policy — not needed
+    - depguard
+    # json tag casing style
+    - tagliatelle
+    # forbid fmt.Fprintf — we need it for stderr
+    - forbidigo
+    # returning interfaces is fine
+    - ireturn
+    # named returns are ok
+    - nonamedreturns
+    # magic numbers in CLI formatting are fine
+    - mnd
+    # Go 1.22+ handles loop var capture
+    - copyloopvar
+    # TODO comments are ok
+    - godox
+    # function length — some functions are naturally long
+    - funlen
+    # cognitive complexity — already covered by cyclop
+    - gocognit
+    # nested if — readability is subjective
+    - nestif
+    # cyclop complexity — CLI run() is naturally complex
+    - cyclop
+    # no globals — CLI needs package-level vars for flags
+    - gochecknoglobals
+    # no init — cobra uses init()
+    - gochecknoinits
+    # error wrapping — too strict for a CLI
+    - err113
+    # context in struct — not relevant here
+    - containedctx
+    # non-inherited context
+    - noctx
+    # parallel test — not needed for httptest
+    - paralleltest
+    # wrap errors — overkill for CLI
+    - wrapcheck
+    # unparam — too noisy
+    - unparam
+    # declaration order
+    - decorder
+    # function order
+    - funcorder
+    # test package naming
+    - testpackage
+    # embedded struct field order
+    - embeddedstructfieldcheck
+    # recvcheck
+    - recvcheck
 
 formatters:
   enable:

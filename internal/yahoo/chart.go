@@ -1,3 +1,4 @@
+// Package yahoo provides a client for the Yahoo Finance API.
 package yahoo
 
 import (
@@ -52,6 +53,7 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 		if err != nil {
 			return nil, fmt.Errorf("parse dateFrom: %w", err)
 		}
+
 		params.Set("period1", strconv.FormatInt(t.UTC().Unix(), 10))
 
 		endDate := t
@@ -75,7 +77,9 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("User-Agent", userAgent)
+
 	for _, cookie := range c.session.Cookies() {
 		req.AddCookie(cookie)
 	}
@@ -83,14 +87,18 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 	body, err := c.doChartRequest(req)
 	if err != nil {
 		// Retry once with session refresh
-		if refreshErr := c.session.Refresh(); refreshErr != nil {
+		refreshErr := c.session.Refresh()
+		if refreshErr != nil {
 			return nil, fmt.Errorf("session refresh: %w", refreshErr)
 		}
+
 		req2, _ := http.NewRequest(http.MethodGet, endpoint, nil)
 		req2.Header.Set("User-Agent", userAgent)
+
 		for _, cookie := range c.session.Cookies() {
 			req2.AddCookie(cookie)
 		}
+
 		body, err = c.doChartRequest(req2)
 		if err != nil {
 			return nil, err
@@ -99,7 +107,8 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 
 	var cr chartResponse
 
-	if err := json.Unmarshal(body, &cr); err != nil {
+	err = json.Unmarshal(body, &cr)
+	if err != nil {
 		return nil, fmt.Errorf("decode chart response: %w", err)
 	}
 
@@ -110,31 +119,38 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 	r := cr.Chart.Result[0]
 	points := make([]model.HistoryPoint, 0, len(r.Timestamp))
 
-	var q = r.Indicators.Quote
+	q := r.Indicators.Quote
 	if len(q) == 0 {
 		return nil, fmt.Errorf("no quote indicators for %s", symbol)
 	}
 
 	r2 := func(v float64) float64 { return math.Round(v*100) / 100 }
+
 	for i, ts := range r.Timestamp {
 		pt := model.HistoryPoint{
 			Date: time.Unix(ts, 0).UTC().Format("2006-01-02"),
 		}
+
 		if i < len(q[0].Open) {
 			pt.Open = r2(q[0].Open[i])
 		}
+
 		if i < len(q[0].High) {
 			pt.High = r2(q[0].High[i])
 		}
+
 		if i < len(q[0].Low) {
 			pt.Low = r2(q[0].Low[i])
 		}
+
 		if i < len(q[0].Close) {
 			pt.Close = r2(q[0].Close[i])
 		}
+
 		if i < len(q[0].Volume) {
 			pt.Volume = q[0].Volume[i]
 		}
+
 		points = append(points, pt)
 	}
 
@@ -147,10 +163,11 @@ func (c *Client) GetChart(symbol, rangeStr, dateFrom, dateTo string) (*model.His
 }
 
 func (c *Client) doChartRequest(req *http.Request) ([]byte, error) {
-	resp, err := c.session.client.Do(req)
+	resp, err := c.session.client.Do(req) //nolint:gosec // URL is constructed from trusted baseURL
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {

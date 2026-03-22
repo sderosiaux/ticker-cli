@@ -1,3 +1,4 @@
+// Package output provides formatters for writing data as JSON, CSV, and table.
 package output
 
 import (
@@ -11,16 +12,17 @@ import (
 
 // IsTTY reports whether stdout is a terminal.
 func IsTTY() bool {
-	return term.IsTerminal(int(os.Stdout.Fd()))
+	return term.IsTerminal(int(os.Stdout.Fd())) //nolint:gosec // fd fits in int
 }
 
 // Write dispatches data to the appropriate formatter based on format.
 // Supported formats: "json", "csv", "table".
 // When compact is true and format is "json", NDJSON is emitted.
-func Write(w io.Writer, data interface{}, format string, compact bool) error {
+func Write(w io.Writer, data any, format string, compact bool) error {
 	if compact {
 		format = "json"
 	}
+
 	switch format {
 	case "json":
 		return writeJSON(w, data, compact)
@@ -33,17 +35,20 @@ func Write(w io.Writer, data interface{}, format string, compact bool) error {
 	}
 }
 
-func toQuotes(data interface{}) ([]model.Quote, bool) {
+func toQuotes(data any) ([]model.Quote, bool) {
 	q, ok := data.([]model.Quote)
+
 	return q, ok
 }
 
-func toHistory(data interface{}) ([]model.HistoryResult, bool) {
+func toHistory(data any) ([]model.HistoryResult, bool) {
 	h, ok := data.([]model.HistoryResult)
+
 	return h, ok
 }
 
-func toChanges(data interface{}) ([]model.ChangeResult, bool) {
+func toChanges(data any) ([]model.ChangeResult, bool) {
 	c, ok := data.([]model.ChangeResult)
+
 	return c, ok
 }

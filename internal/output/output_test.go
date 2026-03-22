@@ -59,16 +59,23 @@ var testChanges = []model.ChangeResult{
 
 func TestJSON_Quotes(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testQuotes, "json", false); err != nil {
+
+	err := Write(&buf, testQuotes, "json", false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	var got []model.Quote
-	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+
+	err = json.Unmarshal(buf.Bytes(), &got)
+	if err != nil {
 		t.Fatalf("invalid JSON: %v\noutput: %s", err, buf.String())
 	}
+
 	if len(got) != 2 {
 		t.Fatalf("expected 2 quotes, got %d", len(got))
 	}
+
 	if got[0].Symbol != "AAPL" {
 		t.Errorf("expected AAPL, got %s", got[0].Symbol)
 	}
@@ -76,13 +83,19 @@ func TestJSON_Quotes(t *testing.T) {
 
 func TestJSON_History(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testHistory, "json", false); err != nil {
+
+	err := Write(&buf, testHistory, "json", false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	var got []model.HistoryResult
-	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+
+	err = json.Unmarshal(buf.Bytes(), &got)
+	if err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
+
 	if len(got[0].Points) != 2 {
 		t.Fatalf("expected 2 points, got %d", len(got[0].Points))
 	}
@@ -90,13 +103,19 @@ func TestJSON_History(t *testing.T) {
 
 func TestJSON_Changes(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testChanges, "json", false); err != nil {
+
+	err := Write(&buf, testChanges, "json", false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	var got []model.ChangeResult
-	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+
+	err = json.Unmarshal(buf.Bytes(), &got)
+	if err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
+
 	if got[0].Period != "1mo" {
 		t.Errorf("expected 1mo, got %s", got[0].Period)
 	}
@@ -104,22 +123,29 @@ func TestJSON_Changes(t *testing.T) {
 
 func TestCompact_Quotes(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testQuotes, "json", true); err != nil {
+
+	err := Write(&buf, testQuotes, "json", true)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
 	if len(lines) != 2 {
 		t.Fatalf("expected 2 NDJSON lines, got %d: %s", len(lines), buf.String())
 	}
+
 	for i, line := range lines {
-		var obj map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+		var obj map[string]any
+
+		err = json.Unmarshal([]byte(line), &obj)
+		if err != nil {
 			t.Fatalf("line %d invalid JSON: %v\nline: %s", i, err, line)
 		}
 		// compact should have only essential fields
 		if _, ok := obj["symbol"]; !ok {
 			t.Errorf("line %d missing symbol", i)
 		}
+
 		if _, ok := obj["exchange"]; ok {
 			t.Errorf("line %d should not have exchange in compact mode", i)
 		}
@@ -128,17 +154,24 @@ func TestCompact_Quotes(t *testing.T) {
 
 func TestCompact_Changes(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testChanges, "json", true); err != nil {
+
+	err := Write(&buf, testChanges, "json", true)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
 	if len(lines) != 1 {
 		t.Fatalf("expected 1 NDJSON line, got %d", len(lines))
 	}
-	var obj map[string]interface{}
-	if err := json.Unmarshal([]byte(lines[0]), &obj); err != nil {
+
+	var obj map[string]any
+
+	err = json.Unmarshal([]byte(lines[0]), &obj)
+	if err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
+
 	if _, ok := obj["period"]; !ok {
 		t.Error("missing period field")
 	}
@@ -146,10 +179,14 @@ func TestCompact_Changes(t *testing.T) {
 
 func TestCSV_Quotes(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testQuotes, "csv", false); err != nil {
+
+	err := Write(&buf, testQuotes, "csv", false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	r := csv.NewReader(strings.NewReader(buf.String()))
+
 	records, err := r.ReadAll()
 	if err != nil {
 		t.Fatal(err)
@@ -158,9 +195,11 @@ func TestCSV_Quotes(t *testing.T) {
 	if len(records) != 3 {
 		t.Fatalf("expected 3 rows (header+2), got %d", len(records))
 	}
+
 	if records[0][0] != "symbol" {
 		t.Errorf("expected header 'symbol', got %s", records[0][0])
 	}
+
 	if records[1][0] != "AAPL" {
 		t.Errorf("expected AAPL, got %s", records[1][0])
 	}
@@ -168,10 +207,14 @@ func TestCSV_Quotes(t *testing.T) {
 
 func TestCSV_History(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testHistory, "csv", false); err != nil {
+
+	err := Write(&buf, testHistory, "csv", false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	r := csv.NewReader(strings.NewReader(buf.String()))
+
 	records, err := r.ReadAll()
 	if err != nil {
 		t.Fatal(err)
@@ -180,6 +223,7 @@ func TestCSV_History(t *testing.T) {
 	if len(records) != 3 {
 		t.Fatalf("expected 3 rows, got %d", len(records))
 	}
+
 	if records[0][0] != "symbol" {
 		t.Errorf("expected header 'symbol', got %s", records[0][0])
 	}
@@ -187,14 +231,19 @@ func TestCSV_History(t *testing.T) {
 
 func TestCSV_Changes(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testChanges, "csv", false); err != nil {
+
+	err := Write(&buf, testChanges, "csv", false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	r := csv.NewReader(strings.NewReader(buf.String()))
+
 	records, err := r.ReadAll()
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(records) != 2 {
 		t.Fatalf("expected 2 rows, got %d", len(records))
 	}
@@ -202,16 +251,21 @@ func TestCSV_Changes(t *testing.T) {
 
 func TestTable_Quotes(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testQuotes, "table", false); err != nil {
+
+	err := Write(&buf, testQuotes, "table", false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	out := buf.String()
 	if !strings.Contains(out, "AAPL") {
 		t.Error("table output missing AAPL")
 	}
+
 	if !strings.Contains(out, "BTC-USD") {
 		t.Error("table output missing BTC-USD")
 	}
+
 	if !strings.Contains(out, "178.52") {
 		t.Error("table output missing price")
 	}
@@ -219,13 +273,17 @@ func TestTable_Quotes(t *testing.T) {
 
 func TestTable_History(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testHistory, "table", false); err != nil {
+
+	err := Write(&buf, testHistory, "table", false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	out := buf.String()
 	if !strings.Contains(out, "AAPL") {
 		t.Error("table output missing AAPL")
 	}
+
 	if !strings.Contains(out, "2026-03-18") {
 		t.Error("table output missing date")
 	}
@@ -233,13 +291,17 @@ func TestTable_History(t *testing.T) {
 
 func TestTable_Changes(t *testing.T) {
 	var buf bytes.Buffer
-	if err := Write(&buf, testChanges, "table", false); err != nil {
+
+	err := Write(&buf, testChanges, "table", false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	out := buf.String()
 	if !strings.Contains(out, "AAPL") {
 		t.Error("table output missing AAPL")
 	}
+
 	if !strings.Contains(out, "1mo") {
 		t.Error("table output missing period")
 	}
@@ -248,6 +310,7 @@ func TestTable_Changes(t *testing.T) {
 func TestUnsupportedFormat(t *testing.T) {
 	var buf bytes.Buffer
 	err := Write(&buf, testQuotes, "xml", false)
+
 	if err == nil {
 		t.Error("expected error for unsupported format")
 	}
@@ -256,6 +319,7 @@ func TestUnsupportedFormat(t *testing.T) {
 func TestUnsupportedData(t *testing.T) {
 	var buf bytes.Buffer
 	err := Write(&buf, "not a slice", "json", false)
+
 	if err == nil {
 		t.Error("expected error for unsupported data type")
 	}

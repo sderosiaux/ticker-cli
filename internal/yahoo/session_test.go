@@ -9,14 +9,14 @@ import (
 
 func TestNewSession_GetsCookieAndCrumb(t *testing.T) {
 	// Mock root server: returns A3 cookie
-	root := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	root := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "A3", Value: "abc123"})
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer root.Close()
 
 	// Mock crumb server: returns crumb string
-	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("test-crumb-xyz"))
 	}))
 	defer crumb.Close()
@@ -32,11 +32,13 @@ func TestNewSession_GetsCookieAndCrumb(t *testing.T) {
 
 	cookies := sess.Cookies()
 	found := false
+
 	for _, c := range cookies {
 		if c.Name == "A3" && c.Value == "abc123" {
 			found = true
 		}
 	}
+
 	if !found {
 		t.Errorf("expected A3 cookie, got %v", cookies)
 	}
@@ -45,13 +47,13 @@ func TestNewSession_GetsCookieAndCrumb(t *testing.T) {
 func TestNewSession_Refresh(t *testing.T) {
 	var callCount atomic.Int32
 
-	root := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	root := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "A3", Value: "refreshed"})
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer root.Close()
 
-	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		n := callCount.Add(1)
 		if n == 1 {
 			_, _ = w.Write([]byte("crumb-v1"))
@@ -70,7 +72,8 @@ func TestNewSession_Refresh(t *testing.T) {
 		t.Errorf("expected crumb 'crumb-v1', got %q", sess.Crumb())
 	}
 
-	if err := sess.Refresh(); err != nil {
+	err = sess.Refresh()
+	if err != nil {
 		t.Fatalf("Refresh failed: %v", err)
 	}
 
@@ -85,6 +88,7 @@ func TestNewSession_EUConsentFlow(t *testing.T) {
 		if r.Method == http.MethodPost {
 			http.SetCookie(w, &http.Cookie{Name: "A3", Value: "eu-cookie"})
 			w.WriteHeader(http.StatusOK)
+
 			return
 		}
 		// GET returns a page with sessionId and gcrumb in the URL-like content
@@ -93,13 +97,13 @@ func TestNewSession_EUConsentFlow(t *testing.T) {
 	defer consent.Close()
 
 	// Root server: returns 302 to consent
-	root := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	root := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", consent.URL+"/consent?sessionId=sess123&gcrumb=gc456")
 		w.WriteHeader(http.StatusFound)
 	}))
 	defer root.Close()
 
-	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("eu-crumb"))
 	}))
 	defer crumb.Close()
@@ -114,30 +118,34 @@ func TestNewSession_EUConsentFlow(t *testing.T) {
 	}
 
 	found := false
+
 	for _, c := range sess.Cookies() {
 		if c.Name == "A3" {
 			found = true
 		}
 	}
+
 	if !found {
 		t.Errorf("expected A3 cookie from EU consent flow")
 	}
 }
 
 func TestNewSession_CrumbSentWithCookies(t *testing.T) {
-	root := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	root := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "A3", Value: "val"})
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer root.Close()
 
 	var gotCookie bool
+
 	crumb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		for _, c := range r.Cookies() {
 			if c.Name == "A3" {
 				gotCookie = true
 			}
 		}
+
 		_, _ = w.Write([]byte("ok"))
 	}))
 	defer crumb.Close()
