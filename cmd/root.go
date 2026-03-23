@@ -64,7 +64,7 @@ var rootCmd = &cobra.Command{
   ticker-cli --all-periods AAPL SLB GC=F --format json
   ticker-cli --weekly-change AAPL --format csv
   ticker-cli --ytd AAPL --format ndjson`,
-	Args:          cobra.MinimumNArgs(1),
+	Args:          cobra.ArbitraryArgs,
 	RunE:          run,
 	SilenceUsage:  true,
 	SilenceErrors: true,
@@ -391,12 +391,7 @@ func fetchQuotes(client *yahoo.Client, symbols []string) (any, int, error) {
 	return quotes, 0, nil
 }
 
-func run(_ *cobra.Command, args []string) error {
-	debug.Enabled = flagDebug
-	debug.ColorEnabled = stderrIsTTY()
-	symbols := args
-
-	// Validate flags
+func validateFlags() error {
 	if flagDate != "" {
 		t, err := time.Parse("2006-01-02", flagDate)
 		if err != nil {
@@ -423,6 +418,28 @@ func run(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	return nil
+}
+
+func run(cmd *cobra.Command, args []string) error {
+	debug.Enabled = flagDebug
+	debug.ColorEnabled = stderrIsTTY()
+	symbols := args
+
+	if len(symbols) == 0 {
+		err := cmd.Help()
+		if err != nil {
+			return fmt.Errorf("help: %w", err)
+		}
+
+		return nil
+	}
+
+	err := validateFlags()
+	if err != nil {
+		return err
+	}
+
 	sp := startSpinner("Fetching prices...")
 
 	client := yahoo.NewClient(
@@ -436,7 +453,7 @@ func run(_ *cobra.Command, args []string) error {
 
 	done := debug.Timer("session.Init")
 
-	err := client.Init()
+	err = client.Init()
 	if err != nil {
 		sp.Stop()
 		errorf("Session failed: %v", err)
