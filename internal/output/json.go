@@ -18,7 +18,7 @@ func writeJSON(w io.Writer, data any, compact bool) error {
 
 func writePrettyJSON(w io.Writer, data any) error {
 	switch data.(type) {
-	case []model.Quote, []model.HistoryResult, []model.ChangeResult:
+	case []model.Quote, []model.HistoryResult, []model.ChangeResult, []model.AllPeriodsResult:
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 
@@ -44,6 +44,10 @@ func writeCompact(w io.Writer, data any) error {
 
 	if history, ok := toHistory(data); ok {
 		return compactHistory(w, history)
+	}
+
+	if allPeriods, ok := toAllPeriods(data); ok {
+		return compactAllPeriods(w, allPeriods)
 	}
 
 	return fmt.Errorf("%T: %w for compact JSON", data, ErrUnsupportedDataType)
@@ -97,6 +101,33 @@ func compactChanges(w io.Writer, changes []model.ChangeResult) error {
 		})
 		if err != nil {
 			return fmt.Errorf("marshal compact change: %w", err)
+		}
+
+		_, _ = fmt.Fprintf(w, "%s\n", b)
+	}
+
+	return nil
+}
+
+type compactAllPeriodsItem struct {
+	Symbol   string              `json:"symbol"`
+	Price    float64             `json:"price"`
+	Currency string              `json:"currency"`
+	Weekly   *model.PeriodChange `json:"weekly,omitempty"`
+	YTD      *model.PeriodChange `json:"ytd,omitempty"`
+}
+
+func compactAllPeriods(w io.Writer, results []model.AllPeriodsResult) error {
+	for _, r := range results {
+		b, err := json.Marshal(compactAllPeriodsItem{
+			Symbol:   r.Symbol,
+			Price:    r.Price,
+			Currency: r.Currency,
+			Weekly:   r.Weekly,
+			YTD:      r.YTD,
+		})
+		if err != nil {
+			return fmt.Errorf("marshal compact all-periods: %w", err)
 		}
 
 		_, _ = fmt.Fprintf(w, "%s\n", b)

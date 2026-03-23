@@ -51,3 +51,19 @@ type ChangeResult struct {
 	ChangePercent float64 `json:"changePercent"`
 	Period        string  `json:"period"`
 }
+
+// PeriodChange holds a change amount and percentage for a named period.
+type PeriodChange struct {
+	Change        float64 `json:"change"`
+	ChangePercent float64 `json:"changePercent"`
+}
+
+// AllPeriodsResult combines current price with weekly and YTD changes.
+type AllPeriodsResult struct {
+	Symbol   string        `json:"symbol"`
+	Name     string        `json:"name"`
+	Price    float64       `json:"price"`
+	Currency string        `json:"currency"`
+	Weekly   *PeriodChange `json:"weekly,omitempty"`
+	YTD      *PeriodChange `json:"ytd,omitempty"`
+}

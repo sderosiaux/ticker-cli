@@ -27,6 +27,8 @@ var (
 	flagRange        string
 	flagWeeklyChange bool
 	flagYTD          bool
+	flagAllPeriods   bool
+	flagSince        string
 	flagDebug        bool
 )
 
@@ -73,6 +75,8 @@ func init() {
 	rootCmd.Flags().StringVar(&flagRange, "range", "", "History period: 1d, 5d, 1mo, 3mo, 6mo, 1y, ytd")
 	rootCmd.Flags().BoolVar(&flagWeeklyChange, "weekly-change", false, "Show weekly % change")
 	rootCmd.Flags().BoolVar(&flagYTD, "ytd", false, "Show year-to-date % change")
+	rootCmd.Flags().BoolVar(&flagAllPeriods, "all-periods", false, "Show price with weekly and YTD % change")
+	rootCmd.Flags().StringVar(&flagSince, "since", "", "History from YYYY-MM-DD to today")
 	rootCmd.Flags().BoolVar(&flagDebug, "debug", false, "Show API calls and timing")
 }
 
@@ -282,9 +286,93 @@ func dispatch(client *yahoo.Client, symbols []string) (any, int, error) {
 		return fetchWeeklyChange(client, symbols)
 	case flagYTD:
 		return fetchYTD(client, symbols)
+	case flagAllPeriods:
+		return fetchAllPeriods(client, symbols)
+	case flagSince != "":
+		return fetchSince(client, symbols)
 	default:
 		return fetchQuotes(client, symbols)
 	}
+}
+
+func fetchAllPeriods(client *yahoo.Client, symbols []string) (any, int, error) {
+	debug.Logf("mode: all-periods")
+
+	errCount := 0
+	results := make([]model.AllPeriodsResult, 0, len(symbols))
+
+	for _, sym := range symbols {
+		d := debug.Timer("GetChart(ytd) " + sym)
+		ytdHist, err := client.GetChart(sym, "ytd", "", "")
+		d()
+
+		if err != nil {
+			errorf("%s: %v. Check symbol at https://finance.yahoo.com/quote/%s", sym, err, sym)
+			errCount++
+
+			continue
+		}
+
+		d2 := debug.Timer("GetChart(5d) " + sym)
+		weekHist, err2 := client.GetChart(sym, "5d", "", "")
+		d2()
+
+		if err2 != nil {
+			errorf("%s: %v. Check symbol at https://finance.yahoo.com/quote/%s", sym, err2, sym)
+			errCount++
+
+			continue
+		}
+
+		var price float64
+		if len(ytdHist.Points) > 0 {
+			price = ytdHist.Points[len(ytdHist.Points)-1].Close
+		}
+
+		r := model.AllPeriodsResult{
+			Symbol:   ytdHist.Symbol,
+			Name:     ytdHist.Name,
+			Price:    price,
+			Currency: ytdHist.Currency,
+		}
+
+		if cr := computeChange(ytdHist, "ytd"); cr != nil {
+			r.YTD = &model.PeriodChange{Change: cr.Change, ChangePercent: cr.ChangePercent}
+		}
+
+		if cr := computeChange(weekHist, "5d"); cr != nil {
+			r.Weekly = &model.PeriodChange{Change: cr.Change, ChangePercent: cr.ChangePercent}
+		}
+
+		results = append(results, r)
+	}
+
+	return results, errCount, nil
+}
+
+func fetchSince(client *yahoo.Client, symbols []string) (any, int, error) {
+	today := time.Now().UTC().Format("2006-01-02")
+	debug.Logf("mode: since=%s to=%s", flagSince, today)
+
+	errCount := 0
+	results := make([]model.HistoryResult, 0, len(symbols))
+
+	for _, sym := range symbols {
+		d := debug.Timer("GetChart " + sym)
+		hist, err := client.GetChart(sym, "", flagSince, today)
+		d()
+
+		if err != nil {
+			errorf("%s: %v. Check symbol at https://finance.yahoo.com/quote/%s", sym, err, sym)
+			errCount++
+
+			continue
+		}
+
+		results = append(results, *hist)
+	}
+
+	return results, errCount, nil
 }
 
 func fetchQuotes(client *yahoo.Client, symbols []string) (any, int, error) {
@@ -320,6 +408,17 @@ func run(_ *cobra.Command, args []string) error {
 
 	if flagRange != "" && !validRanges[flagRange] {
 		return fmt.Errorf("--range %s: %w", flagRange, ErrInvalidRange)
+	}
+
+	if flagSince != "" {
+		t, err := time.Parse("2006-01-02", flagSince)
+		if err != nil {
+			return fmt.Errorf("--since %s: %w", flagSince, ErrDateFormat)
+		}
+
+		if t.After(time.Now()) {
+			return fmt.Errorf("--since %s: %w", flagSince, ErrDateFuture)
+		}
 	}
 
 	sp := startSpinner("Fetching prices...")

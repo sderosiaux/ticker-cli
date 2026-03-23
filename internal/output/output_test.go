@@ -308,6 +308,122 @@ func TestTable_Changes(t *testing.T) {
 	}
 }
 
+var testAllPeriods = []model.AllPeriodsResult{
+	{
+		Symbol:   "AAPL",
+		Name:     "Apple Inc.",
+		Price:    178.52,
+		Currency: "USD",
+		Weekly:   &model.PeriodChange{Change: 1.50, ChangePercent: 0.85},
+		YTD:      &model.PeriodChange{Change: -12.30, ChangePercent: -6.44},
+	},
+}
+
+func TestJSON_AllPeriods(t *testing.T) {
+	var buf bytes.Buffer
+
+	err := output.Write(&buf, testAllPeriods, "json", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got []model.AllPeriodsResult
+
+	err = json.Unmarshal(buf.Bytes(), &got)
+	if err != nil {
+		t.Fatalf("invalid JSON: %v\noutput: %s", err, buf.String())
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(got))
+	}
+
+	if got[0].Weekly == nil || got[0].YTD == nil {
+		t.Error("expected Weekly and YTD to be set")
+	}
+}
+
+func TestNDJSON_AllPeriods(t *testing.T) {
+	var buf bytes.Buffer
+
+	err := output.Write(&buf, testAllPeriods, "ndjson", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 NDJSON line, got %d", len(lines))
+	}
+
+	var obj map[string]any
+
+	err = json.Unmarshal([]byte(lines[0]), &obj)
+	if err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	if _, ok := obj["weekly"]; !ok {
+		t.Error("missing weekly field")
+	}
+
+	if _, ok := obj["ytd"]; !ok {
+		t.Error("missing ytd field")
+	}
+}
+
+func TestNDJSON_Format(t *testing.T) {
+	var buf bytes.Buffer
+
+	err := output.Write(&buf, testQuotes, "ndjson", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 NDJSON lines, got %d", len(lines))
+	}
+}
+
+func TestCSV_AllPeriods(t *testing.T) {
+	var buf bytes.Buffer
+
+	err := output.Write(&buf, testAllPeriods, "csv", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r := csv.NewReader(strings.NewReader(buf.String()))
+
+	records, err := r.ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// header + 1 data row
+	if len(records) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(records))
+	}
+
+	if records[0][4] != "weekly_change" {
+		t.Errorf("expected weekly_change header, got %s", records[0][4])
+	}
+}
+
+func TestTable_AllPeriods(t *testing.T) {
+	var buf bytes.Buffer
+
+	err := output.Write(&buf, testAllPeriods, "table", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "AAPL") {
+		t.Error("table output missing AAPL")
+	}
+}
+
 func TestUnsupportedFormat(t *testing.T) {
 	var buf bytes.Buffer
 	err := output.Write(&buf, testQuotes, "xml", false)

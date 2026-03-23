@@ -26,6 +26,8 @@ func Write(w io.Writer, data any, format string, compact bool) error {
 	switch format {
 	case "json":
 		return writeJSON(w, data, compact)
+	case "ndjson":
+		return writeJSON(w, data, true)
 	case "csv":
 		return writeCSV(w, data)
 	case "table":
@@ -51,4 +53,10 @@ func toChanges(data any) ([]model.ChangeResult, bool) {
 	c, ok := data.([]model.ChangeResult)
 
 	return c, ok
+}
+
+func toAllPeriods(data any) ([]model.AllPeriodsResult, bool) {
+	a, ok := data.([]model.AllPeriodsResult)
+
+	return a, ok
 }

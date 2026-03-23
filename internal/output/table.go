@@ -66,6 +66,10 @@ func writeTableWithColor(w io.Writer, data any, useColor bool) error {
 		return tableChanges(w, changes, useColor)
 	}
 
+	if allPeriods, ok := toAllPeriods(data); ok {
+		return tableAllPeriods(w, allPeriods, useColor)
+	}
+
 	return fmt.Errorf("%T: %w for table", data, ErrUnsupportedDataType)
 }
 
@@ -121,6 +125,34 @@ func tableChanges(w io.Writer, changes []model.ChangeResult, useColor bool) erro
 			chg,
 			pct,
 			c.Period,
+		)
+	}
+
+	return nil
+}
+
+func tablePeriodChange(pc *model.PeriodChange, useColor bool) string {
+	if pc == nil {
+		return "       n/a"
+	}
+
+	pct := fmt.Sprintf("%s%.2f%%", signPrefix(pc.ChangePercent), pc.ChangePercent)
+
+	return colorize(pc.ChangePercent, pct, useColor)
+}
+
+func tableAllPeriods(w io.Writer, results []model.AllPeriodsResult, useColor bool) error {
+	for _, r := range results {
+		name := truncate(r.Name, maxNameLen)
+		weekly := tablePeriodChange(r.Weekly, useColor)
+		ytd := tablePeriodChange(r.YTD, useColor)
+
+		_, _ = fmt.Fprintf(w, "%-10s %-*s %12s  %10s  %10s\n",
+			r.Symbol,
+			maxNameLen, name,
+			formatPrice(r.Price, r.Currency),
+			weekly,
+			ytd,
 		)
 	}
 

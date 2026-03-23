@@ -20,23 +20,31 @@ ticker-cli --date 2026-03-20 AAPL SLB GC=F
 # Range history (1d, 5d, 1mo, 3mo, 6mo, 1y, ytd)
 ticker-cli --range 5d AAPL GC=F
 
+# History since a date (to today)
+ticker-cli --since 2026-01-01 AAPL GC=F
+
 # Weekly change
 ticker-cli --weekly-change AAPL SLB
 
 # Year-to-date change
 ticker-cli --ytd AAPL GC=F BTC-USD
+
+# All periods: price + weekly + YTD in one call
+ticker-cli --all-periods AAPL SLB GC=F BTC-USD
 ```
 
 ## Global Flags
 
 | Flag | Purpose |
 |---|---|
-| `--format json\|csv\|table` | Output format (default: table) |
+| `--format json\|csv\|table\|ndjson` | Output format (default: table) |
 | `--compact` | NDJSON one line per symbol (implies json) |
 | `--date YYYY-MM-DD` | Close price at specific date |
 | `--range 1d\|5d\|1mo\|ytd` | Historical OHLCV over period |
+| `--since YYYY-MM-DD` | History from date to today |
 | `--weekly-change` | % change over last trading week |
 | `--ytd` | Year-to-date % change |
+| `--all-periods` | Price + weekly + YTD in one call |
 | `--debug` | Show API calls and timing on stderr |
 
 ## LLM Usage Patterns
@@ -50,6 +58,12 @@ ticker-cli --format json AAPL BTC-USD GC=F EURUSD=X
 
 # Weekly report data
 ticker-cli --weekly-change --format csv AAPL SLB NEM GC=F BZ=F CL=F BTC-USD EURUSD=X
+
+# Full report: price + weekly + YTD
+ticker-cli --all-periods --format json AAPL SLB GC=F BTC-USD EURUSD=X
+
+# History since a date
+ticker-cli --since 2026-01-01 --format csv AAPL GC=F
 
 # Verify historical price
 ticker-cli --date 2026-03-20 --format json AAPL

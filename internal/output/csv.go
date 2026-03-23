@@ -5,7 +5,45 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+
+	"github.com/sderosiaux/ticker-cli/internal/model"
 )
+
+func csvAllPeriods(cw *csv.Writer, allPeriods []model.AllPeriodsResult) error {
+	_ = cw.Write([]string{"symbol", "name", "price", "currency", "weekly_change", "weekly_change_pct", "ytd_change", "ytd_change_pct"})
+
+	for _, r := range allPeriods {
+		weeklyChange, weeklyPct := 0.0, 0.0
+		if r.Weekly != nil {
+			weeklyChange = r.Weekly.Change
+			weeklyPct = r.Weekly.ChangePercent
+		}
+
+		ytdChange, ytdPct := 0.0, 0.0
+		if r.YTD != nil {
+			ytdChange = r.YTD.Change
+			ytdPct = r.YTD.ChangePercent
+		}
+
+		_ = cw.Write([]string{
+			r.Symbol,
+			r.Name,
+			fmt.Sprintf("%.2f", r.Price),
+			r.Currency,
+			fmt.Sprintf("%.2f", weeklyChange),
+			fmt.Sprintf("%.2f", weeklyPct),
+			fmt.Sprintf("%.2f", ytdChange),
+			fmt.Sprintf("%.2f", ytdPct),
+		})
+	}
+
+	err := cw.Error()
+	if err != nil {
+		return fmt.Errorf("csv write: %w", err)
+	}
+
+	return nil
+}
 
 func writeCSV(w io.Writer, data any) error {
 	cw := csv.NewWriter(w)
@@ -78,6 +116,10 @@ func writeCSV(w io.Writer, data any) error {
 		}
 
 		return nil
+	}
+
+	if allPeriods, ok := toAllPeriods(data); ok {
+		return csvAllPeriods(cw, allPeriods)
 	}
 
 	return fmt.Errorf("%T: %w for CSV", data, ErrUnsupportedDataType)
