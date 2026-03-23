@@ -115,6 +115,12 @@ func parseChartResponse(cr *chartResponse, symbol string) (*model.HistoryResult,
 			pt.Volume = q[0].Volume[i]
 		}
 
+		// Yahoo returns a placeholder point with close=0 for the current
+		// trading day before market close. Skip it.
+		if pt.Close == 0 {
+			continue
+		}
+
 		points = append(points, pt)
 	}
 
