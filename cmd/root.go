@@ -60,8 +60,10 @@ var rootCmd = &cobra.Command{
 	Example: `  ticker-cli AAPL SLB BTC-USD GC=F
   ticker-cli --date 2026-03-20 AAPL SLB
   ticker-cli --range 5d AAPL GC=F
-  ticker-cli --weekly-change AAPL --format json
-  ticker-cli --ytd AAPL --compact`,
+  ticker-cli --since 2026-01-01 AAPL GC=F
+  ticker-cli --all-periods AAPL SLB GC=F --format json
+  ticker-cli --weekly-change AAPL --format csv
+  ticker-cli --ytd AAPL --format ndjson`,
 	Args:          cobra.MinimumNArgs(1),
 	RunE:          run,
 	SilenceUsage:  true,
@@ -69,7 +71,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().StringVar(&flagFormat, "format", "table", "Output format: table, json, csv")
+	rootCmd.Flags().StringVar(&flagFormat, "format", "table", "Output format: table, json, csv, ndjson")
 	rootCmd.Flags().BoolVar(&flagCompact, "compact", false, "Minimal JSON, one line per symbol")
 	rootCmd.Flags().StringVar(&flagDate, "date", "", "Close price at YYYY-MM-DD")
 	rootCmd.Flags().StringVar(&flagRange, "range", "", "History period: 1d, 5d, 1mo, 3mo, 6mo, 1y, ytd")
